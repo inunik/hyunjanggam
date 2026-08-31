@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>현장캠</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="leaflet.min.css" onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -16,7 +16,6 @@
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
 
-/* 헤더 */
 .hdr{display:flex;align-items:center;justify-content:space-between;
   padding:12px 16px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
 .hdr h1{font-size:17px;font-weight:700;letter-spacing:-0.3px}
@@ -25,12 +24,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .gps-dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
 .gps-dot.on{background:var(--gps);box-shadow:0 0 6px var(--gps)}
 
-/* 탭 컨텐츠 */
 .content{flex:1;overflow:hidden;position:relative}
 .pane{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto}
 .pane.active{display:flex}
 
-/* 하단 네비 */
 .nav{display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:10px 4px;background:none;border:none;color:var(--dim);cursor:pointer}
@@ -38,24 +35,36 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .nb svg{width:22px;height:22px}
 .nb span{font-size:10px;font-weight:600}
 
-/* ===== 카메라 탭 ===== */
+/* ===== 카메라 ===== */
 #t-cam{background:#000;position:relative}
 #video{width:100%;height:100%;object-fit:cover}
 #canvas{display:none}
-
 .cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
-.hud{padding:16px;background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent);pointer-events:none}
-.hud-proj{font-size:13px;font-weight:700;color:#fff;margin-bottom:6px;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.hud{padding:16px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);pointer-events:none}
+.hud-proj{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;
+  text-shadow:0 1px 4px rgba(0,0,0,.9);display:flex;align-items:center;gap:8px}
+.hud-proj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.hud-desc{font-size:12px;color:rgba(255,255,255,.75);margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
 .hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
   text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
 .hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
 
-.cam-ctrl{padding:20px 20px 28px;background:linear-gradient(to top,rgba(0,0,0,.82),transparent);
-  display:flex;flex-direction:column;gap:14px}
-.proj-row{display:flex;gap:8px;align-items:center}
-.proj-inp{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  border-radius:8px;color:#fff;padding:9px 12px;font-size:13px;outline:none;-webkit-appearance:none}
-.proj-inp::placeholder{color:rgba(255,255,255,.4)}
+.cam-ctrl{padding:16px 20px 28px;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
+  display:flex;flex-direction:column;gap:12px}
+.proj-select-row{display:flex;gap:8px;align-items:center}
+.proj-chip{flex:1;display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:10px;padding:10px 14px;color:#fff;cursor:pointer;min-width:0}
+.proj-chip-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;background:var(--dim)}
+.proj-chip-label{flex:1;font-size:13px;font-weight:600;text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-mgr-btn{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.proj-mgr-btn svg{width:18px;height:18px}
+.desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
+.desc-inp::placeholder{color:rgba(255,255,255,.35)}
 .cap-row{display:flex;align-items:center;justify-content:center;gap:28px}
 .cap-btn{width:74px;height:74px;border-radius:50%;background:var(--accent);
   border:4px solid rgba(255,255,255,.3);
@@ -67,7 +76,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;
   display:flex;align-items:center;justify-content:center}
 .side-btn svg{width:20px;height:20px}
-
 .start-screen{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:20px;background:var(--bg)}
 .start-screen svg{width:56px;height:56px;opacity:.3}
@@ -75,17 +83,19 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .start-btn{padding:14px 36px;background:var(--accent);border:none;border-radius:12px;
   color:#fff;font-size:15px;font-weight:700;cursor:pointer}
 
-/* ===== 갤러리 탭 ===== */
-#t-gal{padding:16px;gap:12px}
-.gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+/* ===== 갤러리 ===== */
+#t-gal{padding:16px;gap:0}
+.gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .gal-hdr h2{font-size:15px;font-weight:700}
 .gal-cnt{font-size:12px;color:var(--dim)}
 .photo-item{background:var(--surf);border-radius:12px;overflow:hidden;
   display:flex;border:1px solid var(--border);margin-bottom:10px}
 .thumb{width:88px;height:88px;object-fit:cover;flex-shrink:0}
-.pmeta{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
-.pproj{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcoords{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.55}
+.pmeta{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;gap:2px}
+.pproj{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.pproj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pdesc{font-size:12px;color:var(--text);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcoords{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.4}
 .ptime{font-size:10px;color:var(--dim)}
 .pacts{display:flex;flex-direction:column;justify-content:center;padding:8px;gap:8px}
 .ibtn{width:34px;height:34px;border-radius:8px;border:none;background:var(--surf2);
@@ -95,76 +105,259 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;color:var(--dim);padding:40px;text-align:center}
 .empty svg{width:48px;height:48px;opacity:.25}
+.empty p{font-size:14px}
+.empty small{font-size:12px;opacity:.6}
 
-/* ===== 지도 탭 ===== */
-#t-map{position:relative}
+/* ===== 지도 ===== */
 #map{width:100%;height:100%}
 .map-fab{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
 .mfab{width:42px;height:42px;border-radius:10px;background:var(--surf);
   border:1px solid var(--border);color:var(--text);cursor:pointer;
   display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .mfab svg{width:18px;height:18px}
-.layer-badge{position:absolute;bottom:12px;left:12px;background:var(--surf);
-  border:1px solid var(--border);border-radius:8px;padding:6px 10px;
-  font-size:11px;color:var(--dim);z-index:1000;display:none;align-items:center;gap:6px}
-.layer-badge.show{display:flex}
 
-/* ===== 내보내기 탭 ===== */
-#t-exp{padding:16px;gap:16px}
-.sec-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-  color:var(--dim);margin-bottom:8px}
-.card{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px}
-.stat-row{display:flex;justify-content:space-between;align-items:center;
-  padding:6px 0;border-bottom:1px solid var(--border)}
-.stat-row:last-child{border-bottom:none}
-.sl{font-size:13px;color:var(--dim)}
-.sv{font-size:13px;font-weight:600}
-.fmt-opts{display:flex;gap:8px;margin-bottom:16px}
-.fmt{flex:1;padding:10px 6px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surf2);color:var(--dim);font-size:12px;font-weight:600;
-  text-align:center;cursor:pointer;transition:all .15s;line-height:1.4}
-.fmt small{font-weight:400;font-size:10px}
-.fmt.sel{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+/* ===== 레이어 패널 (공용 바텀시트) ===== */
+.bottom-panel{position:absolute;bottom:0;left:0;right:0;z-index:2000;
+  background:var(--surf);border-top:1px solid var(--border);border-radius:20px 20px 0 0;
+  transform:translateY(100%);transition:transform .3s ease;max-height:75vh;
+  display:flex;flex-direction:column}
+.bottom-panel.open{transform:translateY(0)}
+.panel-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.panel-hdr h3{font-size:15px;font-weight:700}
+.panel-body{flex:1;overflow-y:auto}
+.close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;font-size:16px}
+.add-row{padding:10px 16px 20px;flex-shrink:0}
+.add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);
+  border:1px dashed var(--accent);border-radius:10px;
+  color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
+
+/* 섹션 헤더 */
+.layer-section-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px 6px;background:var(--bg);position:sticky;top:0;z-index:1}
+.layer-section-hdr span{font-size:11px;font-weight:700;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--dim)}
+.section-toggle-all{font-size:11px;color:var(--accent);background:none;border:none;
+  cursor:pointer;font-weight:600}
+
+/* 레이어/프로젝트 아이템 */
+.layer-item{display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--border)}
+.layer-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.layer-info{flex:1;min-width:0}
+.layer-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-sub{font-size:11px;color:var(--dim)}
+.toggle-btn{width:44px;height:26px;border-radius:13px;border:none;cursor:pointer;
+  flex-shrink:0;transition:background .2s;position:relative}
+.toggle-btn.on{background:var(--accent)}
+.toggle-btn.off{background:var(--surf2)}
+.toggle-btn::after{content:'';position:absolute;top:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;transition:left .2s}
+.toggle-btn.on::after{left:21px}
+.toggle-btn.off::after{left:3px}
+.del-btn{width:30px;height:30px;border-radius:8px;border:none;
+  background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.del-btn svg{width:14px;height:14px}
+.no-items{padding:24px 16px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
+
+/* 프로젝트 선택 아이템 */
+.proj-item{display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer}
+.proj-item:active{background:var(--surf2)}
+.proj-item-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.proj-item-info{flex:1;min-width:0}
+.proj-item-name{font-size:14px;font-weight:600}
+.proj-item-cnt{font-size:11px;color:var(--dim)}
+.proj-item-check{font-size:18px;color:var(--accent);width:20px;text-align:center}
+.proj-del-btn{width:32px;height:32px;border-radius:8px;border:none;
+  background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.proj-del-btn svg{width:14px;height:14px}
+
+/* 좌표 팝업 */
+.coord-title{font-size:10px;color:var(--dim);margin-bottom:3px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.coord-val{font-family:'Courier New',monospace;font-size:12px;color:var(--gps);margin-bottom:8px;line-height:1.5}
+.addr-val{font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5;word-break:keep-all}
+.copy-row{display:flex;gap:6px}
+.copy-btn{flex:1;padding:7px 8px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.copy-btn.sec{background:var(--surf2);color:var(--text)}
+
+/* 모달 */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
+.modal-overlay.show{display:flex}
+.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;width:100%}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
+.modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);padding:12px;font-size:14px;
+  outline:none;-webkit-appearance:none;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px}
+.modal-btn{flex:1;padding:14px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer}
+.modal-btn.cancel{background:var(--surf2);color:var(--dim)}
+.modal-btn.confirm{background:var(--accent);color:#fff}
+
+/* 내보내기 */
+#t-exp{padding:12px;gap:0}
 .exp-btn{width:100%;padding:16px;background:var(--accent);border:none;border-radius:12px;
   color:#fff;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px}
 .exp-btn:active{opacity:.85}
-.exp-btn:disabled{opacity:.4;cursor:default}
-.exp-btn.sec{background:var(--surf2);color:var(--text);margin-top:8px}
+.exp-btn.sec{background:var(--surf2);color:var(--text)}
+.exp-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;
+  padding:14px;margin-bottom:10px}
+.exp-all-card{border-style:dashed;border-color:var(--dim)}
+.exp-card-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.exp-proj-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.exp-proj-info{flex:1;min-width:0}
+.exp-proj-name{font-size:14px;font-weight:700}
+.exp-proj-stat{font-size:11px;color:var(--dim);margin-top:2px}
+.exp-fmt-row{display:flex;gap:8px}
+.exp-fmt-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:10px 6px;border-radius:10px;border:none;cursor:pointer;transition:opacity .15s}
+.exp-fmt-btn:active{opacity:.75}
+.exp-fmt-btn span:first-child{font-size:20px}
+.exp-fmt-btn span:nth-child(2){font-size:12px;font-weight:700}
+.exp-fmt-btn small{font-size:10px;opacity:.7}
+.exp-fmt-btn.kmz{background:rgba(255,107,0,.15);color:#FF6B00}
+.exp-fmt-btn.kml{background:rgba(33,150,243,.15);color:#2196F3}
+.exp-fmt-btn.geo{background:rgba(76,175,80,.15);color:#4CAF50}
+.exp-no-gps{font-size:12px;color:var(--dim);text-align:center;
+  padding:8px;background:var(--surf2);border-radius:8px}
+/* 헤더 아이콘 버튼 */
+.hdr-icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hdr-icon-btn svg{width:16px;height:16px}
 
-/* 토스트 */
+/* 설정 패널 */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;display:none}
+.settings-overlay.show{display:block}
+.settings-panel{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);
+  background:var(--surf);border-left:1px solid var(--border);z-index:5001;
+  transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.settings-panel.open{transform:translateX(0)}
+.set-section{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--dim);margin:16px 0 8px}
+.set-card{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:0}
+.set-label{font-size:13px;font-weight:600;margin-bottom:2px}
+.set-sub{font-size:11px;color:var(--dim)}
+.set-inp{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:9px 12px;font-size:13px;outline:none;-webkit-appearance:none;min-width:0}
+.set-save-btn{padding:9px 14px;background:var(--accent);border:none;border-radius:8px;
+  color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+.set-key-status{font-size:11px;margin-top:6px;min-height:16px}
+.map-type-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.map-type-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;
+  white-space:nowrap;min-width:60px}
+.map-type-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+/* URL 입력 */
+.url-input-row{display:flex;gap:8px}
+.url-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:10px 12px;font-size:12px;outline:none;-webkit-appearance:none;min-width:0}
+.url-inp::placeholder{color:var(--dim)}
+.url-load-btn{padding:10px 12px;background:var(--accent);border:none;border-radius:8px;
+  color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
+
+.import-banner{display:flex;align-items:center;gap:12px;margin:12px 12px 4px;
+  padding:14px 16px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);
+  border-radius:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.import-banner:active{opacity:.8}
+.import-icon{font-size:28px;flex-shrink:0}
+.import-info{flex:1;min-width:0}
+.import-title{font-size:14px;font-weight:700;color:var(--gps)}
+.import-sub{font-size:11px;color:var(--dim);margin-top:2px}
+.import-arrow{font-size:22px;color:var(--gps);opacity:.6;flex-shrink:0}
+.import-progress{margin:0 12px 4px;padding:12px 16px;background:var(--surf);
+  border:1px solid var(--border);border-radius:14px;font-size:13px;color:var(--dim);
+  display:none;align-items:center;gap:10px}
+.import-progress.show{display:flex}
+.progress-bar-wrap{flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
+.progress-bar{height:100%;background:var(--gps);border-radius:2px;transition:width .2s;width:0%}
+
 .toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(16px);
   background:var(--surf2);border:1px solid var(--border);border-radius:10px;
   padding:10px 18px;font-size:13px;font-weight:500;white-space:nowrap;
   opacity:0;transition:all .2s;z-index:9999;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* Leaflet 다크 팝업 */
 .leaflet-popup-content-wrapper{background:var(--surf)!important;color:var(--text)!important;
   border:1px solid var(--border)!important;border-radius:10px!important;
   box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
 .leaflet-popup-tip{background:var(--surf)!important}
 .popup-img{width:100%;max-width:200px;border-radius:6px;margin-bottom:8px}
 .popup-meta{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.6}
-.popup-title{font-size:12px;font-weight:700;margin-bottom:4px}
+.popup-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.popup-desc{font-size:11px;color:var(--dim);margin-bottom:4px}
 </style>
 </head>
 <body>
 
 <div class="hdr">
   <h1>현장<span>캠</span></h1>
-  <div class="gps-pill">
-    <div class="gps-dot" id="gps-dot"></div>
-    <span id="gps-txt">GPS 대기</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="gps-pill">
+      <div class="gps-dot" id="gps-dot"></div>
+      <span id="gps-txt">GPS 대기</span>
+    </div>
+    <button class="hdr-icon-btn" onclick="openSettings()" title="설정">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+        <path d="M12 2v2M12 20v2M2 12H4M20 12h2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- 설정 패널 (전체 오버레이) -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
+    <h3>설정</h3>
+    <button class="close-btn" onclick="closeSettings()">✕</button>
+  </div>
+  <div style="padding:16px;overflow-y:auto;flex:1">
+
+    <!-- 지도 레이어 -->
+    <div class="set-section">지도</div>
+    <div class="set-card">
+      <div class="set-label">기본 지도</div>
+      <div class="map-type-btns">
+        <button class="map-type-btn on" id="mtype-esri" onclick="setMapType('esri')">일반</button>
+        <button class="map-type-btn" id="mtype-vworld" onclick="setMapType('vworld')">VWorld</button>
+        <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ ESRI</button>
+        <button class="map-type-btn" id="mtype-kakao-sat" onclick="setMapType('kakao-sat')">🛰️ 카카오</button>
+        <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️ VWorld</button>
+        <button class="map-type-btn" id="mtype-osm" onclick="setMapType('osm')">OSM</button>
+        <button class="map-type-btn" id="mtype-vworld-gray" onclick="setMapType('vworld-gray')">지적도</button>
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-top:8px">일반~OSM 키 불필요 &nbsp;/&nbsp; 지적도만 API 키 필요</div>
+    </div>
+
+    <!-- VWorld API -->
+    <div class="set-section">VWorld API</div>
+    <div class="set-card">
+      <div class="set-label">API 키</div>
+      <div class="set-sub">api.vworld.kr 에서 발급 (무료)</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input class="set-inp" id="vworld-key-inp" type="text"
+          placeholder="API 키 붙여넣기" autocomplete="off">
+        <button class="set-save-btn" onclick="saveVWorldKey()">저장</button>
+      </div>
+      <div class="set-key-status" id="vworld-key-status"></div>
+    </div>
+
   </div>
 </div>
 
 <div class="content">
 
-  <!-- 카메라 -->
+  <!-- ===== 카메라 ===== -->
   <div class="pane active" id="t-cam">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
-
     <div class="start-screen" id="start-screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
@@ -173,10 +366,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <p>아래 버튼을 눌러 카메라를 시작하세요</p>
       <button class="start-btn" onclick="startCamera()">📷 카메라 시작</button>
     </div>
-
     <div class="cam-overlay" id="cam-overlay" style="display:none">
       <div class="hud">
-        <div class="hud-proj" id="hud-proj">—</div>
+        <div class="hud-proj">
+          <div class="hud-proj-dot" id="hud-dot" style="background:var(--dim)"></div>
+          <span id="hud-proj">프로젝트 없음</span>
+        </div>
+        <div class="hud-desc" id="hud-desc" style="display:none"></div>
         <div class="hud-gps">
           <div><span class="lb">LAT</span><span id="hud-lat">---.------</span></div>
           <div><span class="lb">LON</span><span id="hud-lon">---.------</span></div>
@@ -185,12 +381,23 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         </div>
       </div>
       <div class="cam-ctrl">
-        <div class="proj-row">
-          <input class="proj-inp" id="proj-inp" type="text" placeholder="공사명 입력 (선택)" maxlength="40"
-            oninput="updateHUD()">
+        <div class="proj-select-row">
+          <button class="proj-chip" onclick="openProjPanel()">
+            <div class="proj-chip-dot" id="chip-dot"></div>
+            <span class="proj-chip-label" id="chip-label">프로젝트 선택 ▾</span>
+          </button>
+          <button class="proj-mgr-btn" onclick="openProjMgr()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+          </button>
         </div>
+        <input class="desc-inp" id="desc-inp" type="text"
+          placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열 현황)" maxlength="60"
+          oninput="updateHUD()">
         <div class="cap-row">
-          <button class="side-btn" onclick="goTab('map')" title="지도">
+          <button class="side-btn" onclick="goTab('map')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
               <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
@@ -199,7 +406,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           <button class="cap-btn" id="cap-btn" onclick="capture()">
             <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
           </button>
-          <button class="side-btn" onclick="goTab('gal')" title="갤러리">
+          <button class="side-btn" onclick="goTab('gal')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
               <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -208,9 +415,46 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         </div>
       </div>
     </div>
+
+    <!-- 프로젝트 선택 패널 -->
+    <div class="bottom-panel" id="proj-panel">
+      <div class="panel-hdr">
+        <h3>프로젝트 선택</h3>
+        <button class="close-btn" onclick="closeProjPanel()">✕</button>
+      </div>
+      <div class="panel-body" id="proj-select-list"></div>
+      <div class="add-row">
+        <button class="add-btn-outline" onclick="closeProjPanel();openNewProjModal()">+ 새 프로젝트 추가</button>
+      </div>
+    </div>
+
+    <!-- 프로젝트 관리 패널 -->
+    <div class="bottom-panel" id="proj-mgr-panel">
+      <div class="panel-hdr">
+        <h3>프로젝트 관리</h3>
+        <button class="close-btn" onclick="closeProjMgr()">✕</button>
+      </div>
+      <div class="panel-body" id="proj-mgr-list"></div>
+      <div class="add-row">
+        <button class="add-btn-outline" onclick="closeProjMgr();openNewProjModal()">+ 새 프로젝트 추가</button>
+      </div>
+    </div>
+
+    <!-- 새 프로젝트 모달 -->
+    <div class="modal-overlay" id="new-proj-modal">
+      <div class="modal-card">
+        <div class="modal-title">새 프로젝트 추가</div>
+        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeNewProjModal()">취소</button>
+          <button class="modal-btn confirm" onclick="confirmNewProj()">추가</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- 갤러리 -->
+  <!-- ===== 갤러리 ===== -->
   <div class="pane" id="t-gal">
     <div class="gal-hdr">
       <h2>사진 목록</h2>
@@ -219,56 +463,112 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div id="gal-list"></div>
   </div>
 
-  <!-- 지도 -->
+  <!-- ===== 지도 ===== -->
   <div class="pane" id="t-map">
     <div id="map"></div>
     <div class="map-fab">
-      <button class="mfab" onclick="locateMe()" title="내 위치">
+      <button class="mfab" onclick="locateMe()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
         </svg>
       </button>
-      <button class="mfab" onclick="document.getElementById('file-inp').click()" title="파일 열기">
+      <button class="mfab" onclick="openLayerPanel()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
         </svg>
       </button>
-      <button class="mfab" onclick="refreshMarkers()" title="핀 새로고침">
+      <button class="mfab" onclick="refreshMarkers()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6"/>
           <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
         </svg>
       </button>
     </div>
-    <div class="layer-badge" id="layer-badge">
-      <span style="color:var(--accent)">●</span><span id="layer-name"></span>
+
+    <!-- 레이어 관리 패널 -->
+    <div class="bottom-panel" id="layer-panel">
+      <div class="panel-hdr">
+        <h3>레이어 관리</h3>
+        <button class="close-btn" onclick="closeLayerPanel()">✕</button>
+      </div>
+      <div class="panel-body" id="layer-list"></div>
+      <div class="add-row" style="display:flex;flex-direction:column;gap:8px">
+        <!-- 파일 선택 -->
+        <button class="add-btn-outline" onclick="document.getElementById('file-inp').click()">
+          📁 파일 선택 (SHP / KML / KMZ / GeoJSON)
+        </button>
+        <!-- URL 입력 -->
+        <div class="url-input-row">
+          <input class="url-inp" id="layer-url-inp" type="url"
+            placeholder="🔗 KML / KMZ URL 붙여넣기">
+          <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
+        </div>
+      </div>
     </div>
-    <input type="file" id="file-inp" accept=".kml,.geojson,.json" style="display:none" onchange="loadLayer(event)">
+
+    <!-- 레이어 프로젝트 선택 패널 -->
+    <div class="bottom-panel" id="layer-proj-panel">
+      <div class="panel-hdr">
+        <div>
+          <h3>프로젝트 선택</h3>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px" id="layer-panel-fname"></div>
+        </div>
+        <button class="close-btn" onclick="cancelLayerProj()">✕</button>
+      </div>
+      <div class="panel-body" id="layer-proj-list"></div>
+      <div class="add-row">
+        <button class="add-btn-outline" onclick="openNewProjFromLayer()">+ 새 프로젝트 추가</button>
+      </div>
+    </div>
+
+    <!-- 새 프로젝트 모달 (레이어용) -->
+    <div class="modal-overlay" id="layer-new-proj-modal">
+      <div class="modal-card">
+        <div class="modal-title">새 프로젝트 추가</div>
+        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="layer-new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeLayerNewProj()">취소</button>
+          <button class="modal-btn confirm" onclick="confirmLayerNewProj()">추가 후 선택</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="file-inp"
+      accept=".kml,.kmz,.geojson,.json,.zip,.shp,.dbf,.prj,.shx"
+      multiple style="display:none" onchange="onFileSelected(event)">
   </div>
 
-  <!-- 내보내기 -->
+  <!-- ===== 내보내기 ===== -->
   <div class="pane" id="t-exp">
-    <div class="sec-title">저장 현황</div>
-    <div class="card" style="margin-bottom:16px">
-      <div class="stat-row"><span class="sl">사진 수</span><span class="sv" id="st-cnt">0장</span></div>
-      <div class="stat-row"><span class="sl">GPS 있음</span><span class="sv" id="st-gps">0장</span></div>
+    <!-- 가져오기 배너 -->
+    <div class="import-banner" onclick="document.getElementById('kmz-import-inp').click()">
+      <div class="import-icon">📥</div>
+      <div class="import-info">
+        <div class="import-title">KMZ 가져오기</div>
+        <div class="import-sub">다른 사람이 내보낸 KMZ를 불러와 합치기</div>
+      </div>
+      <div class="import-arrow">›</div>
+    </div>
+    <input type="file" id="kmz-import-inp" accept=".kmz" style="display:none" onchange="onImportKMZ(event)">
+
+    <!-- 가져오기 진행률 -->
+    <div class="import-progress" id="import-prog">
+      <span id="import-prog-txt" style="font-size:12px;flex-shrink:0">읽는 중...</span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="import-bar"></div>
+      </div>
     </div>
 
-    <div class="sec-title">포맷 선택</div>
-    <div class="fmt-opts">
-      <div class="fmt sel" onclick="selFmt(this,'kmz')">KMZ<br><small>핀+사진 묶음</small></div>
-      <div class="fmt" onclick="selFmt(this,'kml')">KML<br><small>핀만</small></div>
-      <div class="fmt" onclick="selFmt(this,'geojson')">GeoJSON<br><small>QGIS용</small></div>
+    <div id="exp-list"></div>
+    <div style="padding:0 16px 20px">
+      <button class="exp-btn sec" onclick="clearAll()">🗑 전체 삭제</button>
     </div>
-
-    <button class="exp-btn" id="exp-btn" onclick="doExport()">📤 내보내기</button>
-    <button class="exp-btn sec" onclick="clearAll()">🗑 전체 삭제</button>
   </div>
 </div>
 
-<!-- 하단 네비 -->
 <nav class="nav">
   <button class="nb on" id="nb-cam" onclick="goTab('cam')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -302,386 +602,1023 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-// ===== IndexedDB =====
-let db, photos = [];
-const DB = 'HyunJangCam';
-
-async function initDB() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(DB, 1);
-    r.onupgradeneeded = e => {
-      e.target.result.createObjectStore('photos', {keyPath:'id', autoIncrement:true});
+// 로컬 파일 없으면 CDN에서 자동 로드
+function loadScript(local, cdn, cdn2){
+  return new Promise(res=>{
+    const s=document.createElement('script');
+    s.src=local;
+    s.onload=res;
+    s.onerror=()=>{
+      const urls=[cdn]; if(cdn2)urls.push(cdn2);
+      let idx=0;
+      const tryNext=()=>{
+        if(idx>=urls.length){res();return;}
+        const s2=document.createElement('script');
+        s2.src=urls[idx++];
+        s2.onload=res;
+        s2.onerror=tryNext;
+        document.head.appendChild(s2);
+      };
+      tryNext();
     };
-    r.onsuccess = e => { db = e.target.result; res(); };
-    r.onerror = () => rej(r.error);
+    document.head.appendChild(s);
   });
 }
-const tx = (mode) => db.transaction('photos', mode).objectStore('photos');
-const dbAdd = d => new Promise((res,rej) => { const r=tx('readwrite').add(d); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-const dbAll = () => new Promise((res,rej) => { const r=tx('readonly').getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
-const dbDel = id => new Promise((res,rej) => { const r=tx('readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
-const dbClear = () => new Promise((res,rej) => { const r=tx('readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+async function loadLibs(){
+  await loadScript('leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js');
+  await loadScript('jszip.min.js','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  await loadScript('shp.min.js','https://cdn.jsdelivr.net/npm/shpjs@6.2.0/dist/shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
+  initApp();
+}
+loadLibs();
+</script>
+<script>
+// ===== 색상 =====
+const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','#00BCD4','#FF5722'];
+const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4','#FFEB3B','#FF5722'];
+let layerColorIdx=0;
+
+// ===== IndexedDB =====
+let db, photos=[], projects=[], layers=[];
+const DB='HyunJangCam';
+
+async function initDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB,3);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('layers')) d.createObjectStore('layers',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('projects')) d.createObjectStore('projects',{keyPath:'id',autoIncrement:true});
+    };
+    r.onsuccess=e=>{db=e.target.result;res()};
+    r.onerror=()=>rej(r.error);
+  });
+}
+const txs=(s,m)=>db.transaction(s,m).objectStore(s);
+const dbAdd=(s,d)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').add(d);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const dbAll=(s)=>new Promise((res,rej)=>{const r=txs(s,'readonly').getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const dbDel=(s,id)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+const dbPut=(s,d)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').put(d);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+const dbClear=(s)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+
+// ===== 프로젝트 선택 =====
+let selectedProject=null;
+function selectProject(proj){
+  selectedProject=proj; closeProjPanel();
+  document.getElementById('chip-dot').style.background=proj?proj.color:'var(--dim)';
+  document.getElementById('chip-label').textContent=proj?proj.name+' ▾':'프로젝트 선택 ▾';
+  updateHUD();
+}
 
 // ===== GPS =====
-let gps = null;
-function startGPS() {
-  if (!navigator.geolocation) return;
+let gps=null;
+function startGPS(){
+  if(!navigator.geolocation)return;
   navigator.geolocation.watchPosition(
-    p => {
-      gps = p.coords;
-      document.getElementById('gps-dot').className = 'gps-dot on';
-      document.getElementById('gps-txt').textContent = '±'+Math.round(p.coords.accuracy)+'m';
-      updateHUD();
-    },
-    e => { document.getElementById('gps-txt').textContent = 'GPS 오류'; },
-    {enableHighAccuracy:true, maximumAge:2000, timeout:15000}
+    p=>{gps=p.coords;document.getElementById('gps-dot').className='gps-dot on';
+      document.getElementById('gps-txt').textContent='±'+Math.round(p.coords.accuracy)+'m';updateHUD();},
+    ()=>{document.getElementById('gps-txt').textContent='GPS 오류';},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
   );
 }
-function updateHUD() {
-  if (!gps) return;
-  document.getElementById('hud-lat').textContent = gps.latitude.toFixed(6);
-  document.getElementById('hud-lon').textContent = gps.longitude.toFixed(6);
-  document.getElementById('hud-alt').textContent = gps.altitude ? Math.round(gps.altitude) : '-';
-  document.getElementById('hud-acc').textContent = Math.round(gps.accuracy);
-  const p = document.getElementById('proj-inp').value;
-  document.getElementById('hud-proj').textContent = p || '(공사명 없음)';
+function updateHUD(){
+  const proj=selectedProject,desc=document.getElementById('desc-inp')?.value||'';
+  document.getElementById('hud-dot').style.background=proj?proj.color:'var(--dim)';
+  document.getElementById('hud-proj').textContent=proj?proj.name:'프로젝트 없음';
+  const de=document.getElementById('hud-desc');
+  if(desc){de.textContent='▸ '+desc;de.style.display='block';}else de.style.display='none';
+  if(!gps)return;
+  document.getElementById('hud-lat').textContent=gps.latitude.toFixed(6);
+  document.getElementById('hud-lon').textContent=gps.longitude.toFixed(6);
+  document.getElementById('hud-alt').textContent=gps.altitude?Math.round(gps.altitude):'-';
+  document.getElementById('hud-acc').textContent=Math.round(gps.accuracy);
 }
-setInterval(() => {
-  const el = document.getElementById('hud-time');
-  if (el) el.textContent = new Date().toLocaleTimeString('ko-KR',{hour12:false});
-}, 1000);
+setInterval(()=>{const el=document.getElementById('hud-time');if(el)el.textContent=new Date().toLocaleTimeString('ko-KR',{hour12:false});},1000);
 
 // ===== 카메라 =====
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}},
-      audio:false
-    });
-    const v = document.getElementById('video');
-    v.srcObject = stream;
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('cam-overlay').style.display = 'flex';
+async function startCamera(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    document.getElementById('video').srcObject=stream;
+    document.getElementById('start-screen').style.display='none';
+    document.getElementById('cam-overlay').style.display='flex';
     toast('📷 카메라 시작됨');
-  } catch(e) {
-    toast('카메라 권한을 허용해주세요');
-  }
+  }catch(e){toast('카메라 권한을 허용해주세요');}
 }
 
-function capture() {
-  const v = document.getElementById('video');
-  if (!v.srcObject) { toast('카메라를 먼저 시작해주세요'); return; }
-  const c = document.getElementById('canvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  const ctx = c.getContext('2d');
-  ctx.drawImage(v, 0, 0);
-  drawStamp(ctx, c.width, c.height);
-  c.toBlob(async blob => {
-    const data = {
-      blob, time: new Date().toISOString(),
-      lat: gps ? gps.latitude : null,
-      lon: gps ? gps.longitude : null,
-      alt: gps ? gps.altitude : null,
-      acc: gps ? gps.accuracy : null,
-      project: document.getElementById('proj-inp').value || ''
-    };
-    await dbAdd(data);
-    photos = await dbAll();
+function capture(){
+  const v=document.getElementById('video');
+  if(!v.srcObject){toast('카메라를 먼저 시작해주세요');return;}
+  if(!selectedProject){toast('⚠️ 프로젝트를 먼저 선택해주세요');openProjPanel();return;}
+  const c=document.getElementById('canvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(v,0,0);
+  drawStamp(ctx,c.width,c.height);
+  c.toBlob(async blob=>{
+    await dbAdd('photos',{
+      blob,time:new Date().toISOString(),
+      lat:gps?.latitude||null,lon:gps?.longitude||null,
+      alt:gps?.altitude||null,acc:gps?.accuracy||null,
+      projectId:selectedProject.id,projectName:selectedProject.name,
+      projectColor:selectedProject.color,
+      description:document.getElementById('desc-inp').value||''
+    });
+    photos=await dbAll('photos');
     toast('📸 저장됨!');
-    // 셔터 애니
-    const btn = document.getElementById('cap-btn');
-    btn.style.transform='scale(.85)';
-    setTimeout(()=>btn.style.transform='',150);
-  }, 'image/jpeg', 0.92);
+    const btn=document.getElementById('cap-btn');
+    btn.style.transform='scale(.85)';setTimeout(()=>btn.style.transform='',150);
+  },'image/jpeg',0.92);
 }
 
-function drawStamp(ctx, w, h) {
-  const pad = Math.round(w * 0.025);
-  const barH = Math.round(h * 0.20);
-  const y0 = h - barH;
-  const fs = Math.round(h * 0.027);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
-  ctx.fillRect(0, y0, w, barH);
-  ctx.fillStyle = '#FF6B00';
-  ctx.fillRect(0, y0, w, Math.round(h * 0.004));
-
-  const proj = document.getElementById('proj-inp').value;
-  const latS = gps ? `LAT: ${gps.latitude.toFixed(6)}` : 'LAT: N/A';
-  const lonS = gps ? `LON: ${gps.longitude.toFixed(6)}` : 'LON: N/A';
-  const altS = gps && gps.altitude ? `ALT: ${Math.round(gps.altitude)}m` : 'ALT: N/A';
-  const accS = gps ? `±${Math.round(gps.accuracy)}m` : '';
-  const timeS = new Date().toLocaleString('ko-KR',{hour12:false});
-
-  ctx.textBaseline = 'top';
-  let yy = y0 + pad;
-
-  if (proj) {
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${Math.round(fs*1.1)}px -apple-system,sans-serif`;
-    ctx.fillText(proj, pad, yy);
-    yy += Math.round(fs * 1.5);
-  }
-
-  ctx.fillStyle = '#00E5A0';
-  ctx.font = `${fs}px "Courier New",monospace`;
-  ctx.fillText(`${latS}   ${lonS}`, pad, yy);
-  yy += Math.round(fs * 1.4);
-  ctx.fillText(`${altS}   ${accS}`, pad, yy);
-  yy += Math.round(fs * 1.4);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.65)';
-  ctx.font = `${Math.round(fs*0.85)}px "Courier New",monospace`;
-  ctx.fillText(timeS, pad, yy);
+function drawStamp(ctx,w,h){
+  const pad=Math.round(w*.025),barH=Math.round(h*.22),y0=h-barH,fs=Math.round(h*.027);
+  ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,y0,w,barH);
+  ctx.fillStyle=selectedProject?.color||'#FF6B00';ctx.fillRect(0,y0,w,Math.round(h*.005));
+  const proj=selectedProject?.name||'',desc=document.getElementById('desc-inp').value||'';
+  const latS=gps?`LAT: ${gps.latitude.toFixed(6)}`:'LAT: N/A';
+  const lonS=gps?`LON: ${gps.longitude.toFixed(6)}`:'LON: N/A';
+  const altS=gps&&gps.altitude?`ALT: ${Math.round(gps.altitude)}m`:'ALT: N/A';
+  const accS=gps?`±${Math.round(gps.accuracy)}m`:'';
+  ctx.textBaseline='top';let yy=y0+pad;
+  if(proj){ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(fs*1.15)}px sans-serif`;ctx.fillText(proj,pad,yy);yy+=Math.round(fs*1.5);}
+  if(desc){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`${Math.round(fs*1.0)}px sans-serif`;ctx.fillText('▸ '+desc,pad,yy);yy+=Math.round(fs*1.4);}
+  ctx.fillStyle='#00E5A0';ctx.font=`${fs}px "Courier New",monospace`;
+  ctx.fillText(`${latS}   ${lonS}`,pad,yy);yy+=Math.round(fs*1.35);
+  ctx.fillText(`${altS}   ${accS}`,pad,yy);yy+=Math.round(fs*1.35);
+  ctx.fillStyle='rgba(255,255,255,.6)';ctx.font=`${Math.round(fs*.82)}px "Courier New",monospace`;
+  ctx.fillText(new Date().toLocaleString('ko-KR',{hour12:false}),pad,yy);
 }
 
-// ===== 탭 전환 =====
-function goTab(id) {
+// ===== 탭 =====
+function goTab(id){
   document.querySelectorAll('.pane').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(e=>e.classList.remove('on'));
   document.getElementById('t-'+id).classList.add('active');
   document.getElementById('nb-'+id).classList.add('on');
-  if (id==='gal') renderGallery();
-  if (id==='map') initMap();
-  if (id==='exp') updateStats();
+  if(id==='gal')renderGallery();
+  if(id==='map'){initMap();setTimeout(()=>map&&map.invalidateSize(),100);}
+  if(id==='exp')updateStats();
+}
+
+// ===== 프로젝트 패널 =====
+function openProjPanel(){document.getElementById('proj-panel').classList.add('open');renderProjSelectList();}
+function closeProjPanel(){document.getElementById('proj-panel').classList.remove('open');}
+
+async function renderProjSelectList(){
+  projects=await dbAll('projects');photos=await dbAll('photos');
+  const el=document.getElementById('proj-select-list');
+  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
+  el.innerHTML='';
+  projects.forEach(p=>{
+    const cnt=photos.filter(ph=>ph.projectId===p.id).length;
+    const div=document.createElement('div');div.className='proj-item';
+    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">사진 ${cnt}장</div></div>
+      <div class="proj-item-check">${selectedProject?.id===p.id?'✓':''}</div>`;
+    div.onclick=()=>selectProject(p);
+    el.appendChild(div);
+  });
+}
+
+function openProjMgr(){document.getElementById('proj-mgr-panel').classList.add('open');renderProjMgrList();}
+function closeProjMgr(){document.getElementById('proj-mgr-panel').classList.remove('open');}
+
+async function renderProjMgrList(){
+  projects=await dbAll('projects');photos=await dbAll('photos');
+  const el=document.getElementById('proj-mgr-list');
+  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요</div>';return;}
+  el.innerHTML='';
+  projects.forEach(p=>{
+    const cnt=photos.filter(ph=>ph.projectId===p.id).length;
+    const div=document.createElement('div');div.className='proj-item';div.style.cursor='default';
+    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">사진 ${cnt}장</div></div>
+      <button class="proj-del-btn" onclick="deleteProject(${p.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg>
+      </button>`;
+    el.appendChild(div);
+  });
+}
+
+async function deleteProject(id){
+  if(!confirm('이 프로젝트를 삭제할까요?\n(사진은 유지됩니다)'))return;
+  await dbDel('projects',id);
+  if(selectedProject?.id===id)selectProject(null);
+  projects=await dbAll('projects');renderProjMgrList();toast('프로젝트 삭제됨');
+}
+
+function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
+function closeNewProjModal(){document.getElementById('new-proj-modal').classList.remove('show');}
+
+async function confirmNewProj(){
+  const name=document.getElementById('new-proj-inp').value.trim();
+  if(!name){toast('이름을 입력해주세요');return;}
+  projects=await dbAll('projects');
+  const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+  const id=await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
+  projects=await dbAll('projects');
+  closeNewProjModal();
+  document.getElementById('new-proj-inp').value='';
+  selectProject({id,name,color});
+  toast('✅ '+name+' 추가됨');
 }
 
 // ===== 갤러리 =====
-async function renderGallery() {
-  photos = await dbAll();
-  const list = document.getElementById('gal-list');
-  document.getElementById('gal-cnt').textContent = photos.length+'장';
-  if (!photos.length) {
-    list.innerHTML = `<div class="empty">
+async function renderGallery(){
+  photos=await dbAll('photos');
+  const list=document.getElementById('gal-list');
+  document.getElementById('gal-cnt').textContent=photos.length+'장';
+  if(!photos.length){
+    list.innerHTML=`<div class="empty">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>아직 사진이 없어요</p>
-    </div>`;
+      <p>아직 사진이 없어요</p><small>카메라 탭에서 촬영해보세요</small></div>`;
     return;
   }
-  list.innerHTML = '';
-  [...photos].reverse().forEach(p => {
-    const url = URL.createObjectURL(p.blob);
-    const t = new Date(p.time).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',
-      hour:'2-digit',minute:'2-digit',hour12:false});
-    const div = document.createElement('div');
-    div.className = 'photo-item';
-    div.innerHTML = `
-      <img class="thumb" src="${url}">
+  list.innerHTML='';
+  [...photos].reverse().forEach(p=>{
+    const url=URL.createObjectURL(p.blob);
+    const t=new Date(p.time).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+    const div=document.createElement('div');div.className='photo-item';
+    div.innerHTML=`<img class="thumb" src="${url}">
       <div class="pmeta">
-        <div class="pproj">${p.project||'(공사명 없음)'}</div>
+        <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
+        ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
         <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\n고도 '+Math.round(p.alt)+'m':''}</div>
         <div class="ptime">${t}</div>
       </div>
-      <div class="pacts">
-        <button class="ibtn del" onclick="delPhoto(${p.id})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
-          </svg>
-        </button>
-      </div>`;
+      <div class="pacts"><button class="ibtn del" onclick="delPhoto(${p.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg></button></div>`;
     list.appendChild(div);
   });
 }
-async function delPhoto(id) {
-  await dbDel(id); photos = await dbAll();
-  renderGallery(); toast('삭제됨');
-}
+async function delPhoto(id){await dbDel('photos',id);photos=await dbAll('photos');renderGallery();toast('삭제됨');}
 
 // ===== 지도 =====
-let map, markers, kmlLayer;
-function initMap() {
-  if (map) { refreshMarkers(); return; }
-  map = L.map('map',{zoomControl:false}).setView([36.5,127.8],7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap', maxZoom:19
-  }).addTo(map);
-  L.control.zoom({position:'bottomright'}).addTo(map);
-  markers = L.layerGroup().addTo(map);
-  refreshMarkers();
-}
-async function refreshMarkers() {
-  if (!map) return;
-  photos = await dbAll();
-  markers.clearLayers();
-  const gpsPhotos = photos.filter(p=>p.lat&&p.lon);
-  if (!gpsPhotos.length) return;
-  const bounds = [];
-  gpsPhotos.forEach(p => {
-    const url = URL.createObjectURL(p.blob);
-    const t = new Date(p.time).toLocaleString('ko-KR',{hour12:false});
-    const icon = L.divIcon({
-      className:'',
-      html:`<div style="width:34px;height:34px;background:#FF6B00;border:2.5px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
-      iconSize:[34,34], iconAnchor:[17,34], popupAnchor:[0,-38]
-    });
-    L.marker([p.lat,p.lon],{icon})
-      .bindPopup(`<img class="popup-img" src="${url}"><div class="popup-title">${p.project||'(공사명 없음)'}</div><div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>${p.alt?'고도 '+Math.round(p.alt)+'m<br>':''}${t}</div>`,{maxWidth:220})
-      .addTo(markers);
-    bounds.push([p.lat,p.lon]);
-  });
-  if (bounds.length) map.fitBounds(bounds,{padding:[50,50]});
-}
-function locateMe() {
-  navigator.geolocation.getCurrentPosition(p=>{
-    if(map) map.setView([p.coords.latitude,p.coords.longitude],16);
-  });
-}
-function loadLayer(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      if (kmlLayer) { map.removeLayer(kmlLayer); kmlLayer=null; }
-      if (file.name.endsWith('.geojson')||file.name.endsWith('.json')) {
-        kmlLayer = L.geoJSON(JSON.parse(ev.target.result),
-          {style:{color:'#4CAF50',weight:2.5,fillOpacity:.12}}).addTo(map);
-        if (kmlLayer.getBounds().isValid()) map.fitBounds(kmlLayer.getBounds());
-      } else if (file.name.endsWith('.kml')) {
-        const kml = new DOMParser().parseFromString(ev.target.result,'text/xml');
-        kmlLayer = parseKML(kml).addTo(map);
-      }
-      const b = document.getElementById('layer-badge');
-      b.className = 'layer-badge show';
-      document.getElementById('layer-name').textContent = file.name;
-      toast(file.name+' 불러옴');
-    } catch(err) { toast('파일 읽기 실패'); }
+let map;
+let photoLayerGroups={};   // projectKey → L.layerGroup
+let photoLayerVisible={};  // projectKey → boolean
+let leafletLayers={};      // layerId → L.geoJSON
+
+function initMap(){
+  if(map){refreshMarkers();renderLayerList();return;}
+  map=L.map('map',{zoomControl:false}).setView([36.5,127.8],7);
+  // 저장된 지도 타입 복원
+  const savedType=localStorage.getItem('map_type')||'esri';
+  const savedKey=localStorage.getItem('vworld_key')||'';
+  const initConfigs={
+    'esri':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI',maxZoom:19}},
+    'vworld':{url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',opt:{attribution:'© VWorld',maxZoom:19}},
+    'esri-sat':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI World Imagery',maxZoom:19,maxNativeZoom:18}},
+    'kakao-sat':{url:'https://map{s}.daumcdn.net/map_skyview/L{z}/{y}/{x}.jpg?v=250',opt:{attribution:'© Kakao',subdomains:'0123',maxZoom:19,maxNativeZoom:17}},
+    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:'© VWorld 위성',maxZoom:19}},
+    'osm':{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opt:{attribution:'© OpenStreetMap',maxZoom:19}},
+    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${savedKey}/gray/{z}/{y}/{x}.png`,opt:{attribution:'© VWorld 지적도',maxZoom:19}}
   };
-  reader.readAsText(file);
-  e.target.value='';
+  const needsKey=['vworld-gray'];
+  const useType=(needsKey.includes(savedType)&&!savedKey)?'esri':savedType;
+  const initCfg=initConfigs[useType]||initConfigs['esri'];
+  baseTileLayer=L.tileLayer(initCfg.url,initCfg.opt);
+  baseTileLayer.addTo(map);
+  setTimeout(()=>map.invalidateSize(),300);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  map.on('click',onMapClick);
+  refreshMarkers();
+  loadLayersToMap();
 }
-function parseKML(kml) {
-  const g = L.layerGroup();
-  kml.querySelectorAll('Placemark').forEach(pm => {
-    const name = pm.querySelector('name')?.textContent||'';
-    const raw = pm.querySelector('coordinates')?.textContent?.trim();
-    if (!raw) return;
-    const pts = raw.split(/\s+/).map(c=>{const a=c.split(',');return[parseFloat(a[1]),parseFloat(a[0])];}).filter(p=>!isNaN(p[0]));
-    if (pts.length===1) L.circleMarker(pts[0],{radius:6,color:'#4CAF50',fillColor:'#4CAF50',fillOpacity:.9}).bindPopup(name).addTo(g);
-    else if (pts.length>1) L.polyline(pts,{color:'#4CAF50',weight:2.5}).bindPopup(name).addTo(g);
+
+async function refreshMarkers(){
+  if(!map)return;
+  photos=await dbAll('photos');
+
+  // 기존 photo LayerGroup 전부 제거
+  Object.values(photoLayerGroups).forEach(lg=>map.removeLayer(lg));
+  photoLayerGroups={};
+
+  const gpsPhotos=photos.filter(p=>p.lat&&p.lon);
+  if(!gpsPhotos.length)return;
+
+  // 프로젝트별 그룹핑
+  const groups={};
+  gpsPhotos.forEach(p=>{
+    const key=p.projectId!=null?String(p.projectId):'none';
+    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    groups[key].photos.push(p);
   });
-  return g;
+
+  const bounds=[];
+  Object.entries(groups).forEach(([key,g])=>{
+    if(photoLayerVisible[key]===undefined)photoLayerVisible[key]=true;
+    const lg=L.layerGroup();
+    g.photos.forEach(p=>{
+      const url=URL.createObjectURL(p.blob);
+      const t=new Date(p.time).toLocaleString('ko-KR',{hour12:false});
+      const icon=L.divIcon({className:'',
+        html:`<div style="width:34px;height:34px;background:${g.color};border:2.5px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
+        iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-38]});
+      L.marker([p.lat,p.lon],{icon})
+        .bindPopup(`<img class="popup-img" src="${url}">
+          <div class="popup-title">${p.projectName||'(프로젝트 없음)'}</div>
+          ${p.description?`<div class="popup-desc">▸ ${p.description}</div>`:''}
+          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>${p.alt?'고도 '+Math.round(p.alt)+'m<br>':''}${t}</div>`,
+          {maxWidth:220}).addTo(lg);
+      bounds.push([p.lat,p.lon]);
+    });
+    photoLayerGroups[key]=lg;
+    if(photoLayerVisible[key])lg.addTo(map);
+  });
+
+  if(bounds.length)map.fitBounds(bounds,{padding:[50,50]});
+  if(document.getElementById('layer-panel').classList.contains('open'))renderLayerList();
+}
+
+function togglePhotoLayer(key){
+  photoLayerVisible[key]=!photoLayerVisible[key];
+  const lg=photoLayerGroups[key];
+  if(lg){photoLayerVisible[key]?lg.addTo(map):map.removeLayer(lg);}
+  renderLayerList();
+}
+
+function toggleAllPhotoLayers(visible){
+  Object.keys(photoLayerGroups).forEach(key=>{
+    photoLayerVisible[key]=visible;
+    const lg=photoLayerGroups[key];
+    if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
+  });
+  renderLayerList();
+}
+
+// ===== 레이어 패널 =====
+function openLayerPanel(){document.getElementById('layer-panel').classList.add('open');renderLayerList();}
+function closeLayerPanel(){document.getElementById('layer-panel').classList.remove('open');}
+
+async function renderLayerList(){
+  photos=await dbAll('photos');layers=await dbAll('layers');
+  const el=document.getElementById('layer-list');
+  let html='';
+
+  // ── 📸 사진 섹션 ──
+  const gpsPhotos=photos.filter(p=>p.lat&&p.lon);
+  if(gpsPhotos.length>0){
+    // 프로젝트 그룹 집계
+    const groups={};
+    gpsPhotos.forEach(p=>{
+      const key=p.projectId!=null?String(p.projectId):'none';
+      if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',cnt:0};
+      groups[key].cnt++;
+    });
+    const allOn=Object.keys(groups).every(k=>photoLayerVisible[k]!==false);
+    html+=`<div class="layer-section-hdr">
+      <span>📸 사진</span>
+      <button class="section-toggle-all" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+    </div>`;
+    Object.entries(groups).forEach(([key,g])=>{
+      const on=photoLayerVisible[key]!==false;
+      html+=`<div class="layer-item">
+        <div class="layer-color" style="background:${g.color}"></div>
+        <div class="layer-info">
+          <div class="layer-name">${g.name}</div>
+          <div class="layer-sub">📷 ${g.cnt}장</div>
+        </div>
+        <button class="toggle-btn ${on?'on':'off'}" onclick="togglePhotoLayer('${key}')"></button>
+      </div>`;
+    });
+  }
+
+  // ── 🗺️ 지도 레이어 섹션 ──
+  if(layers.length>0){
+    html+=`<div class="layer-section-hdr"><span>🗺️ 지도 레이어</span></div>`;
+    layers.forEach(l=>{
+      html+=`<div class="layer-item">
+        <div class="layer-color" style="background:${l.color}"></div>
+        <div class="layer-info">
+          <div class="layer-name">${l.name}</div>
+          <div class="layer-sub">${l.project}</div>
+        </div>
+        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer(${l.id})"></button>
+        <button class="del-btn" onclick="deleteLayer(${l.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+          </svg>
+        </button>
+      </div>`;
+    });
+  }
+
+  if(!gpsPhotos.length&&!layers.length){
+    html='<div class="no-items">레이어가 없어요<br>사진을 찍거나 파일을 추가해보세요</div>';
+  }
+  el.innerHTML=html;
+}
+
+async function toggleLayer(id){
+  layers=await dbAll('layers');
+  const l=layers.find(x=>x.id===id);if(!l)return;
+  l.visible=!l.visible;await dbPut('layers',l);
+  if(leafletLayers[id]){l.visible?map.addLayer(leafletLayers[id]):map.removeLayer(leafletLayers[id]);}
+  renderLayerList();
+}
+
+async function deleteLayer(id){
+  if(leafletLayers[id]){map.removeLayer(leafletLayers[id]);delete leafletLayers[id];}
+  await dbDel('layers',id);layers=await dbAll('layers');renderLayerList();toast('레이어 삭제됨');
+}
+
+async function loadLayersToMap(){
+  layers=await dbAll('layers');layers.forEach(l=>addLeafletLayer(l));
+}
+
+function addLeafletLayer(l){
+  if(!map)return;
+  if(leafletLayers[l.id])map.removeLayer(leafletLayers[l.id]);
+  const lf=L.geoJSON(l.geojson,{
+    style:{color:l.color,weight:2.5,fillOpacity:.15},
+    pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6,color:l.color,fillColor:l.color,fillOpacity:.9}),
+    onEachFeature:(f,lf2)=>{
+      const p=f.properties||{};
+      lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.project}</div>`);
+    }
+  });
+  leafletLayers[l.id]=lf;
+  if(l.visible)lf.addTo(map);
+}
+
+function locateMe(){navigator.geolocation.getCurrentPosition(p=>{if(map)map.setView([p.coords.latitude,p.coords.longitude],16);});}
+
+// ===== 지도 클릭 좌표 =====
+async function onMapClick(e){
+  const {lat,lng}=e.latlng;const ls=lat.toFixed(6),lo=lng.toFixed(6);
+  const popup=L.popup({maxWidth:260}).setLatLng(e.latlng)
+    .setContent(`<div><div class="coord-title">좌표</div>
+      <div class="coord-val">${ls}, ${lo}</div>
+      <div class="coord-title">주소</div>
+      <div class="addr-val" id="paddr">🔍 검색 중...</div>
+      <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button></div>
+    </div>`).openOn(map);
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko`);
+    const d=await r.json();const addr=d.display_name||'주소 없음';
+    const el=document.getElementById('paddr');
+    if(el){el.textContent=addr;
+      const row=el.nextElementSibling;
+      if(row)row.innerHTML=`<button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button><button class="copy-btn sec" onclick="copyText(\`${addr.replace(/`/g,"'")}\`)">주소 복사</button>`;
+    }
+  }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent='주소 검색 실패';}
+}
+
+function copyText(t){
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('📋 복사됨!'));
+  else{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('📋 복사됨!');}
+}
+
+// ===== 파일 선택 =====
+// ===== 설정 패널 =====
+function openSettings(){
+  document.getElementById('settings-overlay').classList.add('show');
+  document.getElementById('settings-panel').classList.add('open');
+  // 저장된 키 표시
+  const key=localStorage.getItem('vworld_key')||'';
+  if(key){
+    document.getElementById('vworld-key-inp').value=key;
+    document.getElementById('vworld-key-status').textContent='✅ API 키 저장됨';
+    document.getElementById('vworld-key-status').style.color='var(--gps)';
+  }
+  // 현재 지도 타입 표시
+  const cur=localStorage.getItem('map_type')||'osm';
+  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
+  const curBtn=document.getElementById('mtype-'+cur);
+  if(curBtn)curBtn.classList.add('on');
+}
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('show');
+  document.getElementById('settings-panel').classList.remove('open');
+}
+function saveVWorldKey(){
+  const key=document.getElementById('vworld-key-inp').value.trim();
+  if(!key){toast('API 키를 입력해주세요');return;}
+  localStorage.setItem('vworld_key',key);
+  document.getElementById('vworld-key-status').textContent='✅ 저장됨! 지도 탭에서 VWorld 선택해보세요';
+  document.getElementById('vworld-key-status').style.color='var(--gps)';
+  toast('API 키 저장됨');
+}
+
+// ===== 지도 타입 전환 =====
+let baseTileLayer=null;
+function setMapType(type){
+  if(!map){toast('지도 탭을 먼저 열어주세요');return;}
+  const key=localStorage.getItem('vworld_key')||'';
+
+  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('mtype-'+type);
+  if(btn)btn.classList.add('on');
+  localStorage.setItem('map_type',type);
+
+  if(baseTileLayer)map.removeLayer(baseTileLayer);
+
+  const tileConfigs={
+    'esri':{
+      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      opt:{attribution:'© ESRI',maxZoom:19}
+    },
+    'vworld':{
+      url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',
+      opt:{attribution:'© VWorld',maxZoom:19}
+    },
+    'esri-sat':{
+      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      opt:{attribution:'© ESRI World Imagery',maxZoom:19,maxNativeZoom:18}
+    },
+    'kakao-sat':{
+      url:'https://map{s}.daumcdn.net/map_skyview/L{z}/{y}/{x}.jpg?v=250',
+      opt:{attribution:'© Kakao',subdomains:'0123',maxZoom:19,maxNativeZoom:17}
+    },
+    'vworld-sat':{
+      url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',
+      opt:{attribution:'© VWorld 위성',maxZoom:19}
+    },
+    'osm':{
+      url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      opt:{attribution:'© OpenStreetMap',maxZoom:19}
+    },
+    'vworld-gray':{
+      url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,
+      opt:{attribution:'© VWorld 지적도',maxZoom:19}
+    }
+  };
+  const needsKey=['vworld-gray'];
+  if(needsKey.includes(type)&&!key){toast('지적도는 VWorld API 키가 필요해요');openSettings();return;}
+  const cfg=tileConfigs[type]||tileConfigs['esri'];
+  baseTileLayer=L.tileLayer(cfg.url,cfg.opt);
+  baseTileLayer.addTo(map);
+  baseTileLayer.bringToBack();
+  toast(cfg.opt.attribution+' 적용됨');
+  closeSettings();
+}
+
+// ===== URL로 레이어 불러오기 =====
+async function loadFromURL(){
+  const url=document.getElementById('layer-url-inp').value.trim();
+  if(!url){toast('URL을 입력해주세요');return;}
+  try{
+    toast('URL 불러오는 중...');
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const filename=url.split('/').pop().split('?')[0]||'layer';
+    let file;
+    if(url.toLowerCase().includes('.kmz')||res.headers.get('content-type')?.includes('kmz')){
+      const blob=await res.blob();
+      file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',{type:'application/vnd.google-earth.kmz'});
+    }else{
+      const text=await res.text();
+      const ext=filename.endsWith('.kml')?'.kml':'.kml';
+      file=new File([text],filename.endsWith('.kml')?filename:filename+ext,{type:'application/vnd.google-earth.kml+xml'});
+    }
+    pendingFile=file;
+    document.getElementById('layer-url-inp').value='';
+    document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
+    await renderLayerProjList();
+    document.getElementById('layer-proj-panel').classList.add('open');
+  }catch(err){toast('URL 불러오기 실패: '+err.message);}
+}
+
+// ===== 파일 선택 → 프로젝트 선택 패널 =====
+let pendingFile=null;
+
+async function onFileSelected(e){
+  const files=[...e.target.files]; if(!files.length)return;
+  e.target.value='';
+
+  // SHP 다중 파일 감지 (.shp .dbf .prj)
+  const shpFile=files.find(f=>f.name.toLowerCase().endsWith('.shp'));
+  if(shpFile){
+    const dbfFile=files.find(f=>f.name.toLowerCase().endsWith('.dbf'));
+    const prjFile=files.find(f=>f.name.toLowerCase().endsWith('.prj'));
+    const name=shpFile.name.replace(/\.shp$/i,'');
+    // shpjs용 객체 생성
+    const shpBuf=await shpFile.arrayBuffer();
+    const dbfBuf=dbfFile?await dbfFile.arrayBuffer():null;
+    const prjBuf=prjFile?await prjFile.arrayBuffer():null;
+    // 가상 파일로 래핑
+    pendingFile={_shpMulti:true, name, shpBuf, dbfBuf, prjBuf};
+    document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
+    await openLayerProjPanel(); return;
+  }
+
+  // 단일 파일
+  pendingFile=files[0];
+  document.getElementById('layer-panel-fname').textContent='📄 '+files[0].name;
+  await openLayerProjPanel();
+}
+
+async function openLayerProjPanel(){
+  document.getElementById('layer-proj-panel').classList.add('open');
+  await renderLayerProjList();
+}
+
+function cancelLayerProj(){
+  pendingFile=null;
+  document.getElementById('layer-proj-panel').classList.remove('open');
+}
+
+async function renderLayerProjList(){
+  projects=await dbAll('projects');
+  layers=await dbAll('layers');
+  const el=document.getElementById('layer-proj-list');
+  if(!projects.length){
+    el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';
+    return;
+  }
+  el.innerHTML='';
+  projects.forEach(p=>{
+    const layerCnt=layers.filter(l=>l.project===p.name).length;
+    const div=document.createElement('div');
+    div.className='proj-item';
+    div.innerHTML=`
+      <div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info">
+        <div class="proj-item-name">${p.name}</div>
+        <div class="proj-item-cnt">레이어 ${layerCnt}개</div>
+      </div>
+      <div style="font-size:18px;color:var(--dim)">›</div>`;
+    div.onclick=()=>selectLayerProject(p.name);
+    el.appendChild(div);
+  });
+}
+
+async function selectLayerProject(projName){
+  document.getElementById('layer-proj-panel').classList.remove('open');
+  if(!pendingFile)return;
+  await loadLayerFile(pendingFile, projName);
+  pendingFile=null;
+}
+
+function openNewProjFromLayer(){
+  document.getElementById('layer-new-proj-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);
+}
+
+function closeLayerNewProj(){
+  document.getElementById('layer-new-proj-modal').classList.remove('show');
+}
+
+async function confirmLayerNewProj(){
+  const name=document.getElementById('layer-new-proj-inp').value.trim();
+  if(!name){toast('이름을 입력해주세요');return;}
+  projects=await dbAll('projects');
+  const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+  await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
+  projects=await dbAll('projects');
+  document.getElementById('layer-new-proj-inp').value='';
+  closeLayerNewProj();
+  await selectLayerProject(name);
+}
+
+async function loadLayerFile(file,project){
+  toast('파일 불러오는 중...');
+  try{
+    let geojson, displayName;
+
+    // SHP 다중 파일 (USB로 넣은 경우)
+    if(file._shpMulti){
+      displayName=file.name;
+      const shpObj={shp:file.shpBuf};
+      if(file.dbfBuf)shpObj.dbf=file.dbfBuf;
+      if(file.prjBuf)shpObj.prj=file.prjBuf;
+      geojson=await shp(shpObj);
+    }
+    // KMZ (ZIP 안에 KML)
+    else if(file.name.toLowerCase().endsWith('.kmz')){
+      displayName=file.name.replace(/\.kmz$/i,'');
+      const zip=await JSZip.loadAsync(await file.arrayBuffer());
+      const kmlFile=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
+      if(!kmlFile){toast('KMZ 안에 KML이 없어요');return;}
+      const kmlText=await kmlFile.async('string');
+      geojson=kmlToGeoJSON(new DOMParser().parseFromString(kmlText,'text/xml'));
+    }
+    else if(file.name.endsWith('.zip')){displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());}
+    else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());}
+    else if(file.name.endsWith('.kml')){displayName=file.name.replace(/\.kml$/i,'');geojson=kmlToGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'));}
+    else{toast('지원하지 않는 파일 형식');return;}
+    const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+    const name=displayName||file.name.replace(/\.[^.]+$/,'');
+    const layerData={name,project,color,geojson,visible:true};
+    const id=await dbAdd('layers',layerData);layerData.id=id;
+    layers=await dbAll('layers');addLeafletLayer(layerData);
+    try{const b=leafletLayers[id]?.getBounds();if(b?.isValid())map?.fitBounds(b,{padding:[40,40]});}catch(e2){}
+    renderLayerList();toast('✅ '+name+' 추가됨');
+  }catch(err){toast('파일 읽기 실패: '+err.message);console.error(err);}
+}
+
+function kmlToGeoJSON(kml){
+  const features=[];
+  kml.querySelectorAll('Placemark').forEach(pm=>{
+    const name=pm.querySelector('name')?.textContent||'';
+    const raw=pm.querySelector('coordinates')?.textContent?.trim();if(!raw)return;
+    const pts=raw.split(/\s+/).map(c=>{const a=c.split(',');return[parseFloat(a[0]),parseFloat(a[1])];}).filter(p=>!isNaN(p[0]));
+    if(!pts.length)return;
+    features.push({type:'Feature',geometry:pts.length===1?{type:'Point',coordinates:pts[0]}:{type:'LineString',coordinates:pts},properties:{name}});
+  });
+  return{type:'FeatureCollection',features};
 }
 
 // ===== 내보내기 =====
-let fmt = 'kmz';
-function selFmt(el, f) {
-  document.querySelectorAll('.fmt').forEach(e=>e.classList.remove('sel'));
-  el.classList.add('sel'); fmt = f;
-}
-async function updateStats() {
-  photos = await dbAll();
-  document.getElementById('st-cnt').textContent = photos.length+'장';
-  document.getElementById('st-gps').textContent = photos.filter(p=>p.lat).length+'장';
-}
-async function doExport() {
-  photos = await dbAll();
-  if (!photos.length) { toast('내보낼 사진이 없어요'); return; }
-  const btn = document.getElementById('exp-btn');
-  btn.disabled=true; btn.textContent='생성 중...';
-  try {
-    if (fmt==='kmz') await exportKMZ();
-    else if (fmt==='kml') exportKML();
-    else exportGeoJSON();
-  } catch(e) { toast('내보내기 실패: '+e.message); }
-  btn.disabled=false; btn.textContent='📤 내보내기';
+async function updateStats(){
+  photos=await dbAll('photos');layers=await dbAll('layers');projects=await dbAll('projects');
+  renderExportTab();
 }
 
-async function exportKMZ() {
-  const zip = new JSZip();
-  const imgs = zip.folder('files');
-  let marks = '';
-  for (let i=0; i<photos.length; i++) {
-    const p = photos[i];
-    if (!p.lat||!p.lon) continue;
-    const fname = `photo_${i+1}.jpg`;
-    imgs.file(fname, await p.blob.arrayBuffer());
-    marks += `<Placemark>
-      <name>${p.project||'사진 '+(i+1)}</name>
-      <description><![CDATA[<img src="files/${fname}" width="300"><br>
-      시간: ${new Date(p.time).toLocaleString('ko-KR')}<br>
-      좌표: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>
-      ${p.alt?'고도: '+Math.round(p.alt)+'m':''}]]></description>
-      <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
-      <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point>
-    </Placemark>`;
+async function renderExportTab(){
+  photos=await dbAll('photos');projects=await dbAll('projects');
+  const el=document.getElementById('exp-list');
+  if(!el)return;
+  let html='';
+
+  if(!photos.length){
+    html=`<div class="empty" style="padding:60px 40px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.25">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <p style="font-size:14px">아직 사진이 없어요</p>
+      <small style="font-size:12px;opacity:.6">카메라 탭에서 촬영해보세요</small>
+    </div>`;
+    el.innerHTML=html;return;
   }
-  zip.file('doc.kml', `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document><name>현장 사진 ${dateStr()}</name>${marks}</Document></kml>`);
-  const blob = await zip.generateAsync({type:'blob'});
-  saveFile(blob, `현장사진_${dateStr()}.kmz`, 'application/vnd.google-earth.kmz');
-}
-function exportKML() {
-  let marks = '';
-  photos.filter(p=>p.lat).forEach((p,i)=>{
-    marks+=`<Placemark><name>${p.project||'사진 '+(i+1)}</name>
-    <description>${new Date(p.time).toLocaleString('ko-KR')}</description>
-    <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
+
+  // 프로젝트별 카드
+  const projMap={};
+  photos.forEach(p=>{
+    const key=p.projectId!=null?String(p.projectId):'none';
+    if(!projMap[key])projMap[key]={id:p.projectId,name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    projMap[key].photos.push(p);
   });
-  const blob = new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>현장사진</name>${marks}</Document></kml>`],
-    {type:'application/vnd.google-earth.kml+xml'});
-  saveFile(blob, `현장사진_${dateStr()}.kml`, 'application/vnd.google-earth.kml+xml');
-}
-function exportGeoJSON() {
-  const features = photos.filter(p=>p.lat).map((p,i)=>({
-    type:'Feature',
-    geometry:{type:'Point', coordinates:[p.lon,p.lat,p.alt||0]},
-    properties:{name:p.project||'사진 '+(i+1), time:p.time, altitude:p.alt?Math.round(p.alt):null, accuracy:p.acc?Math.round(p.acc):null}
-  }));
-  const blob = new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'});
-  saveFile(blob, `현장사진_${dateStr()}.geojson`, 'application/json');
+
+  // 프로젝트 순서: DB 순서 + 미분류 마지막
+  const orderedKeys=[
+    ...projects.map(p=>String(p.id)).filter(k=>projMap[k]),
+    ...(projMap['none']?['none']:[])
+  ];
+
+  orderedKeys.forEach(key=>{
+    const g=projMap[key];
+    const total=g.photos.length;
+    const gps=g.photos.filter(p=>p.lat).length;
+    const safeName=g.name.replace(/'/g,"\\'");
+    const fileSlug=g.name.replace(/\s+/g,'_').replace(/[^\w가-힣]/g,'');
+    html+=`
+      <div class="exp-card">
+        <div class="exp-card-hdr">
+          <div class="exp-proj-dot" style="background:${g.color}"></div>
+          <div class="exp-proj-info">
+            <div class="exp-proj-name">${g.name}</div>
+            <div class="exp-proj-stat">사진 ${total}장 &nbsp;·&nbsp; GPS ${gps}장</div>
+          </div>
+        </div>
+        ${gps===0?`<div class="exp-no-gps">GPS 좌표가 없어 지도 내보내기가 안 돼요</div>`:`
+        <div class="exp-fmt-row">
+          <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${fileSlug}')">
+            <span>📦</span><span>KMZ</span><small>핀+사진</small>
+          </button>
+          <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${fileSlug}')">
+            <span>📄</span><span>KML</span><small>핀만</small>
+          </button>
+          <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${fileSlug}')">
+            <span>🗺️</span><span>GeoJSON</span><small>QGIS용</small>
+          </button>
+        </div>`}
+      </div>`;
+  });
+
+  // 전체 내보내기 (2개 이상 프로젝트일 때만)
+  if(orderedKeys.length>1){
+    const totalGps=photos.filter(p=>p.lat).length;
+    html+=`
+      <div class="exp-card exp-all-card">
+        <div class="exp-card-hdr">
+          <div class="exp-proj-dot" style="background:var(--dim)"></div>
+          <div class="exp-proj-info">
+            <div class="exp-proj-name">전체 내보내기</div>
+            <div class="exp-proj-stat">사진 ${photos.length}장 &nbsp;·&nbsp; GPS ${totalGps}장</div>
+          </div>
+        </div>
+        <div class="exp-fmt-row">
+          <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz','전체')">
+            <span>📦</span><span>KMZ</span><small>핀+사진</small>
+          </button>
+          <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml','전체')">
+            <span>📄</span><span>KML</span><small>핀만</small>
+          </button>
+          <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson','전체')">
+            <span>🗺️</span><span>GeoJSON</span><small>QGIS용</small>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML=html;
 }
 
-function saveFile(blob, filename, mimeType) {
-  if (window.AndroidBridge) {
-    // Android 앱 내부 → Downloads 폴더에 저장
-    const reader = new FileReader();
-    reader.onload = () => window.AndroidBridge.saveFile(reader.result, filename, mimeType);
-    reader.readAsDataURL(blob);
-  } else {
-    // 브라우저 폴백
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=filename;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
+async function exportByProject(key, format, nameSlug){
+  photos=await dbAll('photos');
+  const target = key==='all' ? photos :
+    key==='none' ? photos.filter(p=>p.projectId==null) :
+    photos.filter(p=>String(p.projectId)===key);
+
+  if(!target.length){toast('사진이 없어요');return;}
+  const gpsPhotos=target.filter(p=>p.lat&&p.lon);
+  if(!gpsPhotos.length){toast('GPS 좌표가 있는 사진이 없어요');return;}
+
+  toast('생성 중...');
+  try{
+    if(format==='kmz') await doExportKMZ(gpsPhotos, nameSlug);
+    else if(format==='kml') doExportKML(gpsPhotos, nameSlug);
+    else doExportGeoJSON(gpsPhotos, nameSlug);
+  }catch(e){toast('내보내기 실패: '+e.message);}
+}
+
+async function doExportKMZ(list, nameSlug){
+  const zip=new JSZip(),imgs=zip.folder('files');let marks='';
+  for(let i=0;i<list.length;i++){
+    const p=list[i];
+    const fn=`photo_${i+1}.jpg`;imgs.file(fn,await p.blob.arrayBuffer());
+    marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name>
+    <description><![CDATA[<img src="files/${fn}" width="300"><br>
+    <b>${p.projectName||''}</b><br>${p.description?'▸ '+p.description+'<br>':''}
+    시간: ${new Date(p.time).toLocaleString('ko-KR')}<br>
+    좌표: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>${p.alt?'고도: '+Math.round(p.alt)+'m':''}]]></description>
+    <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
+    <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
+  }
+  zip.file('doc.kml',`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${nameSlug}</name>${marks}</Document></kml>`);
+  saveFile(await zip.generateAsync({type:'blob'}),`${nameSlug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
+}
+
+function doExportKML(list, nameSlug){
+  let marks='';
+  list.forEach((p,i)=>{marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name><description>${p.description||''} ${new Date(p.time).toLocaleString('ko-KR')}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
+  saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${nameSlug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${nameSlug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
+}
+
+function doExportGeoJSON(list, nameSlug){
+  const features=list.map((p,i)=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat,p.alt||0]},properties:{project:p.projectName||'',description:p.description||'',time:p.time,altitude:p.alt?Math.round(p.alt):null}}));
+  saveFile(new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'}),`${nameSlug}_${dateStr()}.geojson`,'application/json');
+}
+
+// ===== KMZ 가져오기 =====
+async function onImportKMZ(e){
+  const file=e.target.files[0]; if(!file)return;
+  e.target.value='';
+  await importKMZ(file);
+}
+
+async function importKMZ(file){
+  const prog=document.getElementById('import-prog');
+  const bar=document.getElementById('import-bar');
+  const progTxt=document.getElementById('import-prog-txt');
+
+  try{
+    if(prog){prog.classList.add('show');bar.style.width='10%';progTxt.textContent='KMZ 읽는 중...';}
+
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+
+    // doc.kml 찾기
+    const kmlFile=zip.file('doc.kml');
+    if(!kmlFile){toast('KMZ 형식이 맞지 않아요 (doc.kml 없음)');return;}
+
+    if(prog){bar.style.width='25%';progTxt.textContent='KML 분석 중...';}
+
+    const kmlText=await kmlFile.async('string');
+    const kml=new DOMParser().parseFromString(kmlText,'text/xml');
+    const placemarks=[...kml.querySelectorAll('Placemark')];
+
+    if(!placemarks.length){toast('불러올 사진이 없어요');return;}
+
+    // 프로젝트 맵 (이름 → 객체)
+    projects=await dbAll('projects');
+    const projMap={};
+    projects.forEach(p=>projMap[p.name]=p);
+
+    let imported=0, skipped=0;
+
+    for(let i=0;i<placemarks.length;i++){
+      const pm=placemarks[i];
+
+      if(prog){
+        bar.style.width=(25+Math.round(70*(i/placemarks.length)))+'%';
+        progTxt.textContent=`${i+1}/${placemarks.length}장 처리 중...`;
+      }
+
+      // 좌표
+      const coordStr=pm.querySelector('Point coordinates')?.textContent?.trim()||'';
+      if(!coordStr){skipped++;continue;}
+      const [lonS,latS,altS]=coordStr.split(',');
+      const lon=parseFloat(lonS),lat=parseFloat(latS),alt=parseFloat(altS)||null;
+      if(isNaN(lat)||isNaN(lon)){skipped++;continue;}
+
+      // 시간
+      const timeStr=pm.querySelector('TimeStamp when')?.textContent||new Date().toISOString();
+
+      // 이름(프로젝트명)
+      const projName=pm.querySelector('name')?.textContent?.trim()||'가져온 사진';
+
+      // description에서 설명 텍스트 추출
+      const descHTML=pm.querySelector('description')?.textContent||'';
+      let description='', imgPath='';
+      if(descHTML){
+        const tmp=document.createElement('div');
+        tmp.innerHTML=descHTML;
+        imgPath=tmp.querySelector('img')?.getAttribute('src')||'';
+        const fullText=tmp.textContent||'';
+        const dm=fullText.match(/▸\s*([^\n]+)/);
+        if(dm)description=dm[1].trim();
+      }
+
+      // 사진 blob
+      let blob=null;
+      if(imgPath){
+        const imgFile=zip.file(imgPath);
+        if(imgFile){
+          const buf=await imgFile.async('arraybuffer');
+          blob=new Blob([buf],{type:'image/jpeg'});
+        }
+      }
+      if(!blob){skipped++;continue;}
+
+      // 프로젝트 찾기 or 생성
+      let proj=projMap[projName];
+      if(!proj){
+        projects=await dbAll('projects');
+        const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+        const id=await dbAdd('projects',{name:projName,color,createdAt:new Date().toISOString()});
+        proj={id,name:projName,color};
+        projMap[projName]=proj;
+        projects=await dbAll('projects');
+      }
+
+      // 중복 체크 (같은 시간 + 같은 좌표면 건너뜀)
+      const dup=photos.find(p=>p.time===timeStr&&p.lat===lat&&p.lon===lon);
+      if(dup){skipped++;continue;}
+
+      await dbAdd('photos',{
+        blob,time:timeStr,
+        lat,lon,alt,acc:null,
+        projectId:proj.id,projectName:proj.name,
+        projectColor:proj.color,description
+      });
+      imported++;
+    }
+
+    if(prog){bar.style.width='100%';progTxt.textContent='완료!';}
+    setTimeout(()=>{if(prog)prog.classList.remove('show');},1500);
+
+    photos=await dbAll('photos');
+    renderExportTab();
+
+    if(imported>0) toast(`✅ ${imported}장 가져옴!${skipped>0?' ('+skipped+'장 건너뜀)':''}`);
+    else toast(`가져온 사진이 없어요 (${skipped}장 건너뜀)`);
+
+  }catch(err){
+    if(prog)prog.classList.remove('show');
+    toast('가져오기 실패: '+err.message);
+    console.error(err);
   }
 }
 
-async function clearAll() {
-  if (!confirm('모든 사진을 삭제할까요?')) return;
-  await dbClear(); photos=[];
-  toast('전체 삭제됨'); updateStats();
+function saveFile(blob,filename,mimeType){
+  if(window.AndroidBridge){const reader=new FileReader();reader.onload=()=>window.AndroidBridge.saveFile(reader.result,filename,mimeType);reader.readAsDataURL(blob);}
+  else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }
 
-function dateStr() {
-  const n=new Date();
-  return `${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;
+async function clearAll(){
+  if(!confirm('모든 데이터를 삭제할까요?'))return;
+  await dbClear('photos');await dbClear('layers');await dbClear('projects');
+  photos=[];layers=[];projects=[];selectedProject=null;selectProject(null);
+  Object.values(photoLayerGroups).forEach(lg=>map&&map.removeLayer(lg));
+  photoLayerGroups={};photoLayerVisible={};
+  Object.values(leafletLayers).forEach(l=>map&&map.removeLayer(l));
+  leafletLayers={};toast('전체 삭제됨');updateStats();
 }
 
-// ===== 토스트 =====
+function dateStr(){const n=new Date();return`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;}
+
 let toastTimer;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>el.classList.remove('show'),2500);
-}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
 
 // ===== 초기화 =====
-initDB().then(async () => {
-  photos = await dbAll();
+async function initApp(){
+  await initDB();
+  photos=await dbAll('photos');projects=await dbAll('projects');layers=await dbAll('layers');
   startGPS();
-});
+}
 </script>
 </body>
 </html>
