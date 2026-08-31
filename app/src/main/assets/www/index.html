@@ -4,25 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>현장캠</title>
-<link rel="stylesheet" href="leaflet.min.css" onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
+<link rel="stylesheet" href="leaflet.min.css"
+  onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0F1117;--surf:#1A1D27;--surf2:#242836;
-  --accent:#FF6B00;--accent-dim:rgba(255,107,0,0.15);
-  --text:#E8EAED;--dim:#8B949E;
-  --gps:#00E5A0;--danger:#FF4444;--border:#2D3142;
+  --accent:#FF6B00;--accent-dim:rgba(255,107,0,.15);
+  --text:#E8EAED;--dim:#8B949E;--gps:#00E5A0;--danger:#FF4444;--border:#2D3142;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
 
+/* ── 공통 ── */
 .hdr{display:flex;align-items:center;justify-content:space-between;
   padding:12px 16px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
-.hdr h1{font-size:17px;font-weight:700;letter-spacing:-0.3px}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
 .hdr h1 span{color:var(--accent)}
 .gps-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);font-family:monospace}
 .gps-dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
 .gps-dot.on{background:var(--gps);box-shadow:0 0 6px var(--gps)}
+.hdr-icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hdr-icon-btn svg{width:16px;height:16px}
 
 .content{flex:1;overflow:hidden;position:relative}
 .pane{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto}
@@ -35,134 +39,22 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .nb svg{width:22px;height:22px}
 .nb span{font-size:10px;font-weight:600}
 
-/* ===== 카메라 ===== */
-#t-cam{background:#000;position:relative}
-#video{width:100%;height:100%;object-fit:cover}
-#canvas{display:none}
-.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
-.hud{padding:16px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);pointer-events:none}
-.hud-proj{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;
-  text-shadow:0 1px 4px rgba(0,0,0,.9);display:flex;align-items:center;gap:8px}
-.hud-proj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.hud-desc{font-size:12px;color:rgba(255,255,255,.75);margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
-.hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
-  text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
-.hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
-
-.cam-ctrl{padding:16px 20px 28px;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
-  display:flex;flex-direction:column;gap:12px}
-.proj-select-row{display:flex;gap:8px;align-items:center}
-.proj-chip{flex:1;display:flex;align-items:center;gap:8px;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  border-radius:10px;padding:10px 14px;color:#fff;cursor:pointer;min-width:0}
-.proj-chip-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;background:var(--dim)}
-.proj-chip-label{flex:1;font-size:13px;font-weight:600;text-align:left;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.proj-mgr-btn{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.proj-mgr-btn svg{width:18px;height:18px}
-.desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
-  border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
-.desc-inp::placeholder{color:rgba(255,255,255,.35)}
-.cap-row{display:flex;align-items:center;justify-content:center;gap:28px}
-.cap-btn{width:74px;height:74px;border-radius:50%;background:var(--accent);
-  border:4px solid rgba(255,255,255,.3);
-  box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(255,107,0,.4);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s}
-.cap-btn:active{transform:scale(.9)}
-.cap-btn svg{width:30px;height:30px;color:#fff}
-.side-btn{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.12);
-  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;
-  display:flex;align-items:center;justify-content:center}
-.side-btn svg{width:20px;height:20px}
-.start-screen{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:20px;background:var(--bg)}
-.start-screen svg{width:56px;height:56px;opacity:.3}
-.start-screen p{color:var(--dim);font-size:14px}
-.start-btn{padding:14px 36px;background:var(--accent);border:none;border-radius:12px;
-  color:#fff;font-size:15px;font-weight:700;cursor:pointer}
-
-/* ===== 갤러리 ===== */
-#t-gal{padding:16px;gap:0}
-.gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.gal-hdr h2{font-size:15px;font-weight:700}
-.gal-cnt{font-size:12px;color:var(--dim)}
-.photo-item{background:var(--surf);border-radius:12px;overflow:hidden;
-  display:flex;border:1px solid var(--border);margin-bottom:10px}
-.thumb{width:88px;height:88px;object-fit:cover;flex-shrink:0}
-.pmeta{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;gap:2px}
-.pproj{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
-.pproj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.pdesc{font-size:12px;color:var(--text);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcoords{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.4}
-.ptime{font-size:10px;color:var(--dim)}
-.pacts{display:flex;flex-direction:column;justify-content:center;padding:8px;gap:8px}
-.ibtn{width:34px;height:34px;border-radius:8px;border:none;background:var(--surf2);
-  color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
-.ibtn.del{background:rgba(255,68,68,.1);color:var(--danger)}
-.ibtn svg{width:15px;height:15px}
-.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;color:var(--dim);padding:40px;text-align:center}
-.empty svg{width:48px;height:48px;opacity:.25}
-.empty p{font-size:14px}
-.empty small{font-size:12px;opacity:.6}
-
-/* ===== 지도 ===== */
-#map{width:100%;height:100%}
-.map-fab{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
-.mfab{width:42px;height:42px;border-radius:10px;background:var(--surf);
-  border:1px solid var(--border);color:var(--text);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.mfab svg{width:18px;height:18px}
-
-/* ===== 레이어 패널 (공용 바텀시트) ===== */
+/* ── 바텀 패널 ── */
 .bottom-panel{position:absolute;bottom:0;left:0;right:0;z-index:2000;
   background:var(--surf);border-top:1px solid var(--border);border-radius:20px 20px 0 0;
-  transform:translateY(100%);transition:transform .3s ease;max-height:75vh;
-  display:flex;flex-direction:column}
+  transform:translateY(100%);transition:transform .3s ease;max-height:75vh;display:flex;flex-direction:column}
 .bottom-panel.open{transform:translateY(0)}
 .panel-hdr{display:flex;align-items:center;justify-content:space-between;
   padding:16px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
 .panel-hdr h3{font-size:15px;font-weight:700}
 .panel-body{flex:1;overflow-y:auto}
-.close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);
-  color:var(--dim);cursor:pointer;font-size:16px}
+.close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;font-size:16px}
 .add-row{padding:10px 16px 20px;flex-shrink:0}
-.add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);
-  border:1px dashed var(--accent);border-radius:10px;
-  color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
+.add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);border:1px dashed var(--accent);
+  border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
+.no-items{padding:24px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
 
-/* 섹션 헤더 */
-.layer-section-hdr{display:flex;align-items:center;justify-content:space-between;
-  padding:10px 16px 6px;background:var(--bg);position:sticky;top:0;z-index:1}
-.layer-section-hdr span{font-size:11px;font-weight:700;letter-spacing:.6px;
-  text-transform:uppercase;color:var(--dim)}
-.section-toggle-all{font-size:11px;color:var(--accent);background:none;border:none;
-  cursor:pointer;font-weight:600}
-
-/* 레이어/프로젝트 아이템 */
-.layer-item{display:flex;align-items:center;gap:10px;padding:12px 16px;
-  border-bottom:1px solid var(--border)}
-.layer-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
-.layer-info{flex:1;min-width:0}
-.layer-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.layer-sub{font-size:11px;color:var(--dim)}
-.toggle-btn{width:44px;height:26px;border-radius:13px;border:none;cursor:pointer;
-  flex-shrink:0;transition:background .2s;position:relative}
-.toggle-btn.on{background:var(--accent)}
-.toggle-btn.off{background:var(--surf2)}
-.toggle-btn::after{content:'';position:absolute;top:3px;width:20px;height:20px;
-  border-radius:50%;background:#fff;transition:left .2s}
-.toggle-btn.on::after{left:21px}
-.toggle-btn.off::after{left:3px}
-.del-btn{width:30px;height:30px;border-radius:8px;border:none;
-  background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.del-btn svg{width:14px;height:14px}
-.no-items{padding:24px 16px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
-
-/* 프로젝트 선택 아이템 */
+/* ── 프로젝트 아이템 ── */
 .proj-item{display:flex;align-items:center;gap:10px;padding:14px 16px;
   border-bottom:1px solid var(--border);cursor:pointer}
 .proj-item:active{background:var(--surf2)}
@@ -176,7 +68,90 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   display:flex;align-items:center;justify-content:center}
 .proj-del-btn svg{width:14px;height:14px}
 
-/* 좌표 팝업 */
+/* ── 모달 ── */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
+.modal-overlay.show{display:flex}
+.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;width:100%}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
+.modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:12px;font-size:14px;outline:none;-webkit-appearance:none;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px}
+.modal-btn{flex:1;padding:14px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer}
+.modal-btn.cancel{background:var(--surf2);color:var(--dim)}
+.modal-btn.confirm{background:var(--accent);color:#fff}
+
+/* ── 카메라 ── */
+#t-cam{background:#000;position:relative}
+#video{width:100%;height:100%;object-fit:cover}
+#canvas{display:none}
+.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
+.hud{padding:16px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);pointer-events:none}
+.hud-proj{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;
+  text-shadow:0 1px 4px rgba(0,0,0,.9);display:flex;align-items:center;gap:8px}
+.hud-proj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.hud-desc{font-size:12px;color:rgba(255,255,255,.75);margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
+  text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
+.hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
+.cam-ctrl{padding:16px 20px 28px;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
+  display:flex;flex-direction:column;gap:12px}
+.proj-select-row{display:flex;gap:8px;align-items:center}
+.proj-chip{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 14px;color:#fff;cursor:pointer;min-width:0}
+.proj-chip-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;background:var(--dim)}
+.proj-chip-label{flex:1;font-size:13px;font-weight:600;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-mgr-btn{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.proj-mgr-btn svg{width:18px;height:18px}
+.desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
+.desc-inp::placeholder{color:rgba(255,255,255,.35)}
+.cap-row{display:flex;align-items:center;justify-content:center;gap:28px}
+.cap-btn{width:74px;height:74px;border-radius:50%;background:var(--accent);
+  border:4px solid rgba(255,255,255,.3);box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(255,107,0,.4);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s}
+.cap-btn:active{transform:scale(.9)}
+.cap-btn svg{width:30px;height:30px;color:#fff}
+.side-btn{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.side-btn svg{width:20px;height:20px}
+.start-screen{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;background:var(--bg)}
+.start-screen svg{width:56px;height:56px;opacity:.3}
+.start-screen p{color:var(--dim);font-size:14px}
+.start-btn{padding:14px 36px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+
+/* ── 갤러리 ── */
+#t-gal{padding:16px;gap:0}
+.gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.gal-hdr h2{font-size:15px;font-weight:700}
+.gal-cnt{font-size:12px;color:var(--dim)}
+.photo-item{background:var(--surf);border-radius:12px;overflow:hidden;
+  display:flex;border:1px solid var(--border);margin-bottom:10px}
+.thumb{width:88px;height:88px;object-fit:cover;flex-shrink:0;cursor:pointer}
+.pmeta{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;gap:2px}
+.pproj{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.pproj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pdesc{font-size:12px;color:var(--text);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcoords{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.4}
+.ptime{font-size:10px;color:var(--dim)}
+.pacts{display:flex;flex-direction:column;justify-content:center;padding:8px;gap:8px}
+.ibtn{width:34px;height:34px;border-radius:8px;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ibtn.del{background:rgba(255,68,68,.1);color:var(--danger)}
+.ibtn svg{width:15px;height:15px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--dim);padding:40px;text-align:center}
+.empty svg{width:48px;height:48px;opacity:.25}
+.empty p{font-size:14px}
+.empty small{font-size:12px;opacity:.6}
+
+/* ── 지도 ── */
+#t-map{position:relative}
+#map{width:100%;height:100%}
+.map-fab{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.mfab{width:42px;height:42px;border-radius:10px;background:var(--surf);border:1px solid var(--border);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.mfab svg{width:18px;height:18px}
 .coord-title{font-size:10px;color:var(--dim);margin-bottom:3px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .coord-val{font-family:'Courier New',monospace;font-size:12px;color:var(--gps);margin-bottom:8px;line-height:1.5}
 .addr-val{font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5;word-break:keep-all}
@@ -184,28 +159,51 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .copy-btn{flex:1;padding:7px 8px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer}
 .copy-btn.sec{background:var(--surf2);color:var(--text)}
 
-/* 모달 */
-.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
-.modal-overlay.show{display:flex}
-.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;width:100%}
-.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
-.modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
-.modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);
-  border-radius:10px;color:var(--text);padding:12px;font-size:14px;
-  outline:none;-webkit-appearance:none;margin-bottom:12px}
-.modal-btns{display:flex;gap:8px}
-.modal-btn{flex:1;padding:14px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer}
-.modal-btn.cancel{background:var(--surf2);color:var(--dim)}
-.modal-btn.confirm{background:var(--accent);color:#fff}
+/* ── 설정 패널 ── */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;display:none}
+.settings-overlay.show{display:block}
+.settings-panel{position:fixed;top:0;right:0;bottom:0;width:min(340px,92vw);
+  background:var(--surf);border-left:1px solid var(--border);z-index:5001;
+  transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.settings-panel.open{transform:translateX(0)}
+.set-section{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--dim);margin:16px 0 8px}
+.set-card{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:0}
+.set-label{font-size:13px;font-weight:600;margin-bottom:2px}
+.set-sub{font-size:11px;color:var(--dim)}
+.set-inp{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:9px 12px;font-size:13px;outline:none;-webkit-appearance:none;min-width:0}
+.set-save-btn{padding:9px 14px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+.set-key-status{font-size:11px;margin-top:6px;min-height:16px}
+.map-type-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.map-type-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;min-width:60px}
+.map-type-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.url-input-row{display:flex;gap:8px}
+.url-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:10px 12px;font-size:12px;outline:none;-webkit-appearance:none;min-width:0}
+.url-inp::placeholder{color:var(--dim)}
+.url-load-btn{padding:10px 12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
 
-/* 내보내기 */
-#t-exp{padding:12px;gap:0}
-.exp-btn{width:100%;padding:16px;background:var(--accent);border:none;border-radius:12px;
-  color:#fff;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px}
-.exp-btn:active{opacity:.85}
-.exp-btn.sec{background:var(--surf2);color:var(--text)}
-.exp-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;
-  padding:14px;margin-bottom:10px}
+/* ── 레이어 아이템 ── */
+.layer-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.layer-item:last-child{border-bottom:none}
+.layer-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.layer-info{flex:1;min-width:0}
+.layer-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-sub{font-size:11px;color:var(--dim)}
+.toggle-btn{width:44px;height:26px;border-radius:13px;border:none;cursor:pointer;
+  flex-shrink:0;transition:background .2s;position:relative}
+.toggle-btn.on{background:var(--accent)}
+.toggle-btn.off{background:var(--surf2)}
+.toggle-btn::after{content:'';position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle-btn.on::after{left:21px}
+.toggle-btn.off::after{left:3px}
+.del-btn{width:30px;height:30px;border-radius:8px;border:none;background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.del-btn svg{width:14px;height:14px}
+
+/* ── 내보내기 카드 ── */
+.exp-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
 .exp-all-card{border-style:dashed;border-color:var(--dim)}
 .exp-card-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .exp-proj-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
@@ -222,74 +220,41 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .exp-fmt-btn.kmz{background:rgba(255,107,0,.15);color:#FF6B00}
 .exp-fmt-btn.kml{background:rgba(33,150,243,.15);color:#2196F3}
 .exp-fmt-btn.geo{background:rgba(76,175,80,.15);color:#4CAF50}
-.exp-no-gps{font-size:12px;color:var(--dim);text-align:center;
-  padding:8px;background:var(--surf2);border-radius:8px}
-/* 헤더 아이콘 버튼 */
-.hdr-icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:var(--surf2);
-  color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
-.hdr-icon-btn svg{width:16px;height:16px}
+.exp-no-gps{font-size:12px;color:var(--dim);text-align:center;padding:8px;background:var(--surf);border-radius:8px}
+.imp-banner{display:flex;align-items:center;gap:12px;padding:14px;
+  background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);border-radius:12px;cursor:pointer;margin-bottom:10px}
+.imp-banner:active{opacity:.8}
+.imp-icon{font-size:28px;flex-shrink:0}
+.imp-info{flex:1}
+.imp-title{font-size:14px;font-weight:700;color:var(--gps)}
+.imp-sub{font-size:11px;color:var(--dim);margin-top:2px}
+.imp-arr{font-size:22px;color:var(--gps);opacity:.6}
+.imp-prog{display:none;align-items:center;gap:10px;padding:10px 0}
+.imp-prog.show{display:flex}
+.prog-wrap{flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;background:var(--gps);border-radius:2px;transition:width .2s;width:0%}
+.exp-btn-full{width:100%;padding:14px;background:var(--surf2);border:none;border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;margin-top:8px}
+.exp-btn-full:active{opacity:.8}
 
-/* 설정 패널 */
-.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;display:none}
-.settings-overlay.show{display:block}
-.settings-panel{position:fixed;top:0;right:0;bottom:0;width:min(320px,90vw);
-  background:var(--surf);border-left:1px solid var(--border);z-index:5001;
-  transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
-.settings-panel.open{transform:translateX(0)}
-.set-section{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-  color:var(--dim);margin:16px 0 8px}
-.set-card{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:0}
-.set-label{font-size:13px;font-weight:600;margin-bottom:2px}
-.set-sub{font-size:11px;color:var(--dim)}
-.set-inp{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:8px;
-  color:var(--text);padding:9px 12px;font-size:13px;outline:none;-webkit-appearance:none;min-width:0}
-.set-save-btn{padding:9px 14px;background:var(--accent);border:none;border-radius:8px;
-  color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
-.set-key-status{font-size:11px;margin-top:6px;min-height:16px}
-.map-type-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.map-type-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;
-  white-space:nowrap;min-width:60px}
-.map-type-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-
-/* URL 입력 */
-.url-input-row{display:flex;gap:8px}
-.url-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  color:var(--text);padding:10px 12px;font-size:12px;outline:none;-webkit-appearance:none;min-width:0}
-.url-inp::placeholder{color:var(--dim)}
-.url-load-btn{padding:10px 12px;background:var(--accent);border:none;border-radius:8px;
-  color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
-
-.import-banner{display:flex;align-items:center;gap:12px;margin:12px 12px 4px;
-  padding:14px 16px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);
-  border-radius:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.import-banner:active{opacity:.8}
-.import-icon{font-size:28px;flex-shrink:0}
-.import-info{flex:1;min-width:0}
-.import-title{font-size:14px;font-weight:700;color:var(--gps)}
-.import-sub{font-size:11px;color:var(--dim);margin-top:2px}
-.import-arrow{font-size:22px;color:var(--gps);opacity:.6;flex-shrink:0}
-.import-progress{margin:0 12px 4px;padding:12px 16px;background:var(--surf);
-  border:1px solid var(--border);border-radius:14px;font-size:13px;color:var(--dim);
-  display:none;align-items:center;gap:10px}
-.import-progress.show{display:flex}
-.progress-bar-wrap{flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
-.progress-bar{height:100%;background:var(--gps);border-radius:2px;transition:width .2s;width:0%}
+/* ── 라이트박스 ── */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center}
+.lightbox.show{display:flex}
+.lightbox img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px}
+.lightbox-meta{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);text-align:center;line-height:1.6;padding:12px 20px 0}
+.lightbox-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer}
 
 .toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(16px);
-  background:var(--surf2);border:1px solid var(--border);border-radius:10px;
-  padding:10px 18px;font-size:13px;font-weight:500;white-space:nowrap;
-  opacity:0;transition:all .2s;z-index:9999;pointer-events:none}
+  background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;
+  font-size:13px;font-weight:500;white-space:nowrap;opacity:0;transition:all .2s;z-index:9999;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .leaflet-popup-content-wrapper{background:var(--surf)!important;color:var(--text)!important;
-  border:1px solid var(--border)!important;border-radius:10px!important;
-  box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
+  border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
 .leaflet-popup-tip{background:var(--surf)!important}
-.popup-img{width:100%;max-width:200px;border-radius:6px;margin-bottom:8px}
-.popup-meta{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.6}
+.popup-img{width:100%;max-width:200px;border-radius:6px;margin-bottom:8px;cursor:pointer}
 .popup-title{font-size:12px;font-weight:700;margin-bottom:2px}
 .popup-desc{font-size:11px;color:var(--dim);margin-bottom:4px}
+.popup-meta{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.6}
 </style>
 </head>
 <body>
@@ -301,17 +266,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <div class="gps-dot" id="gps-dot"></div>
       <span id="gps-txt">GPS 대기</span>
     </div>
-    <button class="hdr-icon-btn" onclick="openSettings()" title="설정">
+    <button class="hdr-icon-btn" onclick="openSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/>
-        <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
-        <path d="M12 2v2M12 20v2M2 12H4M20 12h2"/>
+        <path d="M12 2v2M12 20v2M2 12H4M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
       </svg>
     </button>
   </div>
 </div>
 
-<!-- 설정 패널 (전체 오버레이) -->
+<!-- 설정 패널 -->
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 <div class="settings-panel" id="settings-panel">
   <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
@@ -320,34 +284,70 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   </div>
   <div style="padding:16px;overflow-y:auto;flex:1">
 
-    <!-- 지도 레이어 -->
+    <div class="set-section">저장 위치</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-label">📁 현장캠 폴더</div>
+      <div class="set-sub" id="base-path-display" style="margin-top:4px;word-break:break-all">내부저장소/현장캠/</div>
+      <div style="font-size:10px;color:var(--accent);margin-top:6px">파일관리자 · USB에서 접근 가능</div>
+    </div>
+
     <div class="set-section">지도</div>
-    <div class="set-card">
+    <div class="set-card" style="margin-bottom:12px">
       <div class="set-label">기본 지도</div>
       <div class="map-type-btns">
-        <button class="map-type-btn on" id="mtype-esri" onclick="setMapType('esri')">일반</button>
-        <button class="map-type-btn" id="mtype-vworld" onclick="setMapType('vworld')">VWorld</button>
-        <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ ESRI</button>
-        <button class="map-type-btn" id="mtype-kakao-sat" onclick="setMapType('kakao-sat')">🛰️ 카카오</button>
-        <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️ VWorld</button>
+        <button class="map-type-btn on" id="mtype-vworld" onclick="setMapType('vworld')">VWorld</button>
+        <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ESRI</button>
+        <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️VWorld</button>
         <button class="map-type-btn" id="mtype-osm" onclick="setMapType('osm')">OSM</button>
         <button class="map-type-btn" id="mtype-vworld-gray" onclick="setMapType('vworld-gray')">지적도</button>
       </div>
-      <div style="font-size:10px;color:var(--dim);margin-top:8px">일반~OSM 키 불필요 &nbsp;/&nbsp; 지적도만 API 키 필요</div>
+      <div style="font-size:10px;color:var(--dim);margin-top:8px">지적도만 API 키 필요</div>
     </div>
 
-    <!-- VWorld API -->
-    <div class="set-section">VWorld API</div>
-    <div class="set-card">
-      <div class="set-label">API 키</div>
-      <div class="set-sub">api.vworld.kr 에서 발급 (무료)</div>
+    <div class="set-section">VWorld API 키 (지적도용)</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-sub">api.vworld.kr 무료 발급</div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="set-inp" id="vworld-key-inp" type="text"
-          placeholder="API 키 붙여넣기" autocomplete="off">
+        <input class="set-inp" id="vworld-key-inp" type="text" placeholder="API 키 붙여넣기" autocomplete="off">
         <button class="set-save-btn" onclick="saveVWorldKey()">저장</button>
       </div>
       <div class="set-key-status" id="vworld-key-status"></div>
     </div>
+
+    <div class="set-section">레이어 관리</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div id="settings-layer-list" style="margin-bottom:10px"></div>
+      <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
+        onclick="document.getElementById('file-inp').click()">
+        📁 파일 추가 (SHP / KML / KMZ / GeoJSON)
+      </button>
+      <div class="url-input-row">
+        <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
+        <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
+      </div>
+    </div>
+
+    <div class="set-section">내보내기 / 가져오기</div>
+    <div style="padding:0">
+      <div id="settings-exp-list"></div>
+      <div class="imp-banner" onclick="document.getElementById('kmz-import-inp').click()">
+        <div class="imp-icon">📥</div>
+        <div class="imp-info">
+          <div class="imp-title">KMZ 가져오기</div>
+          <div class="imp-sub">다른 사람이 내보낸 KMZ 합치기</div>
+        </div>
+        <div class="imp-arr">›</div>
+      </div>
+      <div class="imp-prog" id="import-prog">
+        <span id="import-prog-txt" style="font-size:12px;flex-shrink:0">처리 중...</span>
+        <div class="prog-wrap"><div class="prog-bar" id="import-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="set-section">데이터</div>
+    <button class="exp-btn-full" style="background:rgba(255,68,68,.1);color:var(--danger)" onclick="clearAll()">
+      🗑 전체 삭제
+    </button>
 
   </div>
 </div>
@@ -377,7 +377,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           <div><span class="lb">LAT</span><span id="hud-lat">---.------</span></div>
           <div><span class="lb">LON</span><span id="hud-lon">---.------</span></div>
           <div><span class="lb">ALT</span><span id="hud-alt">---</span>m &nbsp;<span class="lb">ACC</span><span id="hud-acc">--</span>m</div>
-          <div><span class="lb">TIME</span><span id="hud-time">--:--:--</span></div>
+          <div><span class="lb">TIME</span><span id="hud-time">--.--.-- --:--</span></div>
         </div>
       </div>
       <div class="cam-ctrl">
@@ -394,8 +394,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           </button>
         </div>
         <input class="desc-inp" id="desc-inp" type="text"
-          placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열 현황)" maxlength="60"
-          oninput="updateHUD()">
+          placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열)" maxlength="60" oninput="updateHUD()">
         <div class="cap-row">
           <button class="side-btn" onclick="goTab('map')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -472,13 +471,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
         </svg>
       </button>
-      <button class="mfab" onclick="openLayerPanel()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-          <polyline points="2 17 12 22 22 17"/>
-          <polyline points="2 12 12 17 22 12"/>
-        </svg>
-      </button>
       <button class="mfab" onclick="refreshMarkers()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6"/>
@@ -487,28 +479,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </button>
     </div>
 
-    <!-- 레이어 관리 패널 -->
-    <div class="bottom-panel" id="layer-panel">
-      <div class="panel-hdr">
-        <h3>레이어 관리</h3>
-        <button class="close-btn" onclick="closeLayerPanel()">✕</button>
-      </div>
-      <div class="panel-body" id="layer-list"></div>
-      <div class="add-row" style="display:flex;flex-direction:column;gap:8px">
-        <!-- 파일 선택 -->
-        <button class="add-btn-outline" onclick="document.getElementById('file-inp').click()">
-          📁 파일 선택 (SHP / KML / KMZ / GeoJSON)
-        </button>
-        <!-- URL 입력 -->
-        <div class="url-input-row">
-          <input class="url-inp" id="layer-url-inp" type="url"
-            placeholder="🔗 KML / KMZ URL 붙여넣기">
-          <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 레이어 프로젝트 선택 패널 -->
+    <!-- 레이어 프로젝트 선택 -->
     <div class="bottom-panel" id="layer-proj-panel">
       <div class="panel-hdr">
         <div>
@@ -523,7 +494,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </div>
     </div>
 
-    <!-- 새 프로젝트 모달 (레이어용) -->
+    <!-- 레이어용 새 프로젝트 모달 -->
     <div class="modal-overlay" id="layer-new-proj-modal">
       <div class="modal-card">
         <div class="modal-title">새 프로젝트 추가</div>
@@ -539,34 +510,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <input type="file" id="file-inp"
       accept=".kml,.kmz,.geojson,.json,.zip,.shp,.dbf,.prj,.shx"
       multiple style="display:none" onchange="onFileSelected(event)">
-  </div>
-
-  <!-- ===== 내보내기 ===== -->
-  <div class="pane" id="t-exp">
-    <!-- 가져오기 배너 -->
-    <div class="import-banner" onclick="document.getElementById('kmz-import-inp').click()">
-      <div class="import-icon">📥</div>
-      <div class="import-info">
-        <div class="import-title">KMZ 가져오기</div>
-        <div class="import-sub">다른 사람이 내보낸 KMZ를 불러와 합치기</div>
-      </div>
-      <div class="import-arrow">›</div>
-    </div>
     <input type="file" id="kmz-import-inp" accept=".kmz" style="display:none" onchange="onImportKMZ(event)">
-
-    <!-- 가져오기 진행률 -->
-    <div class="import-progress" id="import-prog">
-      <span id="import-prog-txt" style="font-size:12px;flex-shrink:0">읽는 중...</span>
-      <div class="progress-bar-wrap">
-        <div class="progress-bar" id="import-bar"></div>
-      </div>
-    </div>
-
-    <div id="exp-list"></div>
-    <div style="padding:0 16px 20px">
-      <button class="exp-btn sec" onclick="clearAll()">🗑 전체 삭제</button>
-    </div>
   </div>
+
 </div>
 
 <nav class="nav">
@@ -591,69 +537,74 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </svg>
     <span>지도</span>
   </button>
-  <button class="nb" id="nb-exp" onclick="goTab('exp')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-    <span>내보내기</span>
-  </button>
 </nav>
+
+<!-- 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="">
+  <div class="lightbox-meta" id="lb-meta"></div>
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// 로컬 파일 없으면 CDN에서 자동 로드
-function loadScript(local, cdn, cdn2){
+// ===== 라이브러리 로드 (로컬 우선, CDN 폴백) =====
+function loadScript(local,cdn){
   return new Promise(res=>{
-    const s=document.createElement('script');
-    s.src=local;
+    const s=document.createElement('script');s.src=local;
     s.onload=res;
-    s.onerror=()=>{
-      const urls=[cdn]; if(cdn2)urls.push(cdn2);
-      let idx=0;
-      const tryNext=()=>{
-        if(idx>=urls.length){res();return;}
-        const s2=document.createElement('script');
-        s2.src=urls[idx++];
-        s2.onload=res;
-        s2.onerror=tryNext;
-        document.head.appendChild(s2);
-      };
-      tryNext();
-    };
+    s.onerror=()=>{const s2=document.createElement('script');s2.src=cdn;s2.onload=res;document.head.appendChild(s2);};
     document.head.appendChild(s);
   });
 }
 async function loadLibs(){
   await loadScript('leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js');
   await loadScript('jszip.min.js','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-  await loadScript('shp.min.js','https://cdn.jsdelivr.net/npm/shpjs@6.2.0/dist/shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
+  await loadScript('shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
   initApp();
 }
 loadLibs();
 </script>
 <script>
-// ===== 색상 =====
+// ===== 상수 =====
+const IS_APK = !!window.AndroidBridge;
 const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','#00BCD4','#FF5722'];
-const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4','#FFEB3B','#FF5722'];
+const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4'];
 let layerColorIdx=0;
 
-// ===== IndexedDB =====
-let db, photos=[], projects=[], layers=[];
-const DB='HyunJangCam';
+// ===== 상태 =====
+let projects=[], allPhotos=[], allLayers=[];
+let selectedProject=null;
+let gps=null;
+let basePath='';
 
+// ===== 날짜 포맷 =====
+function fmtDt(iso){
+  const d=new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function fmtNow(){
+  const d=new Date();
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function genFilename(){
+  const d=new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}_${String(Date.now()).slice(-4)}.jpg`;
+}
+
+// ===== IndexedDB (브라우저 폴백용) =====
+let db;
 async function initDB(){
   return new Promise((res,rej)=>{
-    const r=indexedDB.open(DB,3);
+    const r=indexedDB.open('HyunJangCam',4);
     r.onupgradeneeded=e=>{
       const d=e.target.result;
-      if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('layers')) d.createObjectStore('layers',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('projects')) d.createObjectStore('projects',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('projects'))d.createObjectStore('projects',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('layers'))d.createObjectStore('layers',{keyPath:'id',autoIncrement:true});
     };
-    r.onsuccess=e=>{db=e.target.result;res()};
-    r.onerror=()=>rej(r.error);
+    r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error);
   });
 }
 const txs=(s,m)=>db.transaction(s,m).objectStore(s);
@@ -663,30 +614,140 @@ const dbDel=(s,id)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').delete(id
 const dbPut=(s,d)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').put(d);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
 const dbClear=(s)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
 
-// ===== 프로젝트 선택 =====
-let selectedProject=null;
-function selectProject(proj){
-  selectedProject=proj; closeProjPanel();
-  document.getElementById('chip-dot').style.background=proj?proj.color:'var(--dim)';
-  document.getElementById('chip-label').textContent=proj?proj.name+' ▾':'프로젝트 선택 ▾';
-  updateHUD();
+// ===== 데이터 레이어 (APK/브라우저 통합) =====
+async function loadProjects(){
+  if(IS_APK){
+    projects=JSON.parse(AndroidBridge.listProjects());
+  }else{
+    projects=await dbAll('projects');
+  }
+  return projects;
+}
+
+async function createProjectData(name,color){
+  if(IS_APK){
+    AndroidBridge.createProject(name,color);
+    projects=JSON.parse(AndroidBridge.listProjects());
+    return projects.find(p=>p.name===name)||{name,color};
+  }else{
+    const id=await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
+    projects=await dbAll('projects');
+    return projects.find(p=>p.id===id);
+  }
+}
+
+async function deleteProjectData(proj){
+  if(IS_APK){
+    AndroidBridge.deleteProject(proj.name);
+  }else{
+    await dbDel('projects',proj.id);
+  }
+  await loadProjects();
+}
+
+async function loadAllPhotos(){
+  if(IS_APK){
+    allPhotos=[];
+    for(const p of projects){
+      const photos=JSON.parse(AndroidBridge.listPhotos(p.name));
+      allPhotos=allPhotos.concat(photos.map(ph=>({...ph,projectName:p.name,projectColor:p.color})));
+    }
+    // 최신순
+    allPhotos.sort((a,b)=>b.time.localeCompare(a.time));
+  }else{
+    allPhotos=await dbAll('photos');
+    allPhotos.reverse();
+  }
+  return allPhotos;
+}
+
+function getPhotoURL(photo){
+  if(IS_APK)return 'file://'+photo.path;
+  return URL.createObjectURL(photo.blob);
+}
+
+async function savePhotoData(blob,meta){
+  if(IS_APK){
+    const filename=genFilename();
+    return new Promise(res=>{
+      const reader=new FileReader();
+      reader.onload=()=>{
+        AndroidBridge.savePhoto(reader.result,meta.projectName,filename,JSON.stringify(meta));
+        res({...meta,filename,path:basePath+'/'+meta.projectName+'/사진/'+filename});
+      };
+      reader.readAsDataURL(blob);
+    });
+  }else{
+    await dbAdd('photos',{...meta,blob});
+  }
+}
+
+async function deletePhotoData(photo){
+  if(IS_APK){
+    AndroidBridge.deletePhoto(photo.path);
+  }else{
+    await dbDel('photos',photo.id);
+  }
+}
+
+async function loadAllLayers(){
+  if(IS_APK){
+    allLayers=[];
+    for(const p of projects){
+      const layers=JSON.parse(AndroidBridge.listLayers(p.name));
+      allLayers=allLayers.concat(layers.map(l=>({...l,projectName:p.name})));
+    }
+  }else{
+    allLayers=await dbAll('layers');
+  }
+  return allLayers;
+}
+
+async function saveLayerData(projectName,name,geojson,color,visible){
+  const meta={color,visible,project:projectName};
+  if(IS_APK){
+    AndroidBridge.saveLayer(projectName,name,JSON.stringify(geojson),JSON.stringify(meta));
+  }else{
+    await dbAdd('layers',{name,project:projectName,color,geojson,visible});
+  }
+  await loadAllLayers();
+}
+
+async function toggleLayerData(layer){
+  const newVisible=!layer.visible;
+  if(IS_APK){
+    AndroidBridge.updateLayerMeta(layer.geojsonPath,JSON.stringify({color:layer.color,visible:newVisible,project:layer.projectName}));
+  }else{
+    await dbPut('layers',{...layer,visible:newVisible});
+  }
+  await loadAllLayers();
+  return newVisible;
+}
+
+async function deleteLayerData(layer){
+  if(IS_APK){
+    AndroidBridge.deleteLayer(layer.geojsonPath);
+  }else{
+    await dbDel('layers',layer.id);
+  }
+  await loadAllLayers();
 }
 
 // ===== GPS =====
-let gps=null;
 function startGPS(){
   if(!navigator.geolocation)return;
   navigator.geolocation.watchPosition(
     p=>{gps=p.coords;document.getElementById('gps-dot').className='gps-dot on';
-      document.getElementById('gps-txt').textContent='±'+Math.round(p.coords.accuracy)+'m';updateHUD();},
+      document.getElementById('gps-txt').textContent='±'+Math.round(p.coords.accuracy)+'m';
+      updateHUD();},
     ()=>{document.getElementById('gps-txt').textContent='GPS 오류';},
     {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
   );
 }
 function updateHUD(){
-  const proj=selectedProject,desc=document.getElementById('desc-inp')?.value||'';
-  document.getElementById('hud-dot').style.background=proj?proj.color:'var(--dim)';
-  document.getElementById('hud-proj').textContent=proj?proj.name:'프로젝트 없음';
+  document.getElementById('hud-dot').style.background=selectedProject?selectedProject.color:'var(--dim)';
+  document.getElementById('hud-proj').textContent=selectedProject?selectedProject.name:'프로젝트 없음';
+  const desc=document.getElementById('desc-inp')?.value||'';
   const de=document.getElementById('hud-desc');
   if(desc){de.textContent='▸ '+desc;de.style.display='block';}else de.style.display='none';
   if(!gps)return;
@@ -695,16 +756,27 @@ function updateHUD(){
   document.getElementById('hud-alt').textContent=gps.altitude?Math.round(gps.altitude):'-';
   document.getElementById('hud-acc').textContent=Math.round(gps.accuracy);
 }
-setInterval(()=>{const el=document.getElementById('hud-time');if(el)el.textContent=new Date().toLocaleTimeString('ko-KR',{hour12:false});},1000);
+setInterval(()=>{
+  const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
+},10000);
 
 // ===== 카메라 =====
+let camWatchdog=null;
 async function startCamera(){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
-    document.getElementById('video').srcObject=stream;
+    const stream=await navigator.mediaDevices.getUserMedia(
+      {video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    const v=document.getElementById('video');v.srcObject=stream;
     document.getElementById('start-screen').style.display='none';
     document.getElementById('cam-overlay').style.display='flex';
+    document.getElementById('hud-time').textContent=fmtNow();
     toast('📷 카메라 시작됨');
+    if(camWatchdog)clearInterval(camWatchdog);
+    camWatchdog=setInterval(async()=>{
+      if(v.srcObject&&(v.readyState===0||v.paused||v.ended)){
+        try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});v.srcObject=s;}catch(e2){}
+      }
+    },4000);
   }catch(e){toast('카메라 권한을 허용해주세요');}
 }
 
@@ -714,19 +786,20 @@ function capture(){
   if(!selectedProject){toast('⚠️ 프로젝트를 먼저 선택해주세요');openProjPanel();return;}
   const c=document.getElementById('canvas');
   c.width=v.videoWidth;c.height=v.videoHeight;
-  const ctx=c.getContext('2d');
-  ctx.drawImage(v,0,0);
+  const ctx=c.getContext('2d');ctx.drawImage(v,0,0);
   drawStamp(ctx,c.width,c.height);
   c.toBlob(async blob=>{
-    await dbAdd('photos',{
-      blob,time:new Date().toISOString(),
+    const meta={
+      time:new Date().toISOString(),
       lat:gps?.latitude||null,lon:gps?.longitude||null,
       alt:gps?.altitude||null,acc:gps?.accuracy||null,
-      projectId:selectedProject.id,projectName:selectedProject.name,
+      projectId:selectedProject.id||null,
+      projectName:selectedProject.name,
       projectColor:selectedProject.color,
       description:document.getElementById('desc-inp').value||''
-    });
-    photos=await dbAll('photos');
+    };
+    await savePhotoData(blob,meta);
+    await loadAllPhotos();
     toast('📸 저장됨!');
     const btn=document.getElementById('cap-btn');
     btn.style.transform='scale(.85)';setTimeout(()=>btn.style.transform='',150);
@@ -744,12 +817,12 @@ function drawStamp(ctx,w,h){
   const accS=gps?`±${Math.round(gps.accuracy)}m`:'';
   ctx.textBaseline='top';let yy=y0+pad;
   if(proj){ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(fs*1.15)}px sans-serif`;ctx.fillText(proj,pad,yy);yy+=Math.round(fs*1.5);}
-  if(desc){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`${Math.round(fs*1.0)}px sans-serif`;ctx.fillText('▸ '+desc,pad,yy);yy+=Math.round(fs*1.4);}
+  if(desc){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`${fs}px sans-serif`;ctx.fillText('▸ '+desc,pad,yy);yy+=Math.round(fs*1.4);}
   ctx.fillStyle='#00E5A0';ctx.font=`${fs}px "Courier New",monospace`;
   ctx.fillText(`${latS}   ${lonS}`,pad,yy);yy+=Math.round(fs*1.35);
   ctx.fillText(`${altS}   ${accS}`,pad,yy);yy+=Math.round(fs*1.35);
   ctx.fillStyle='rgba(255,255,255,.6)';ctx.font=`${Math.round(fs*.82)}px "Courier New",monospace`;
-  ctx.fillText(new Date().toLocaleString('ko-KR',{hour12:false}),pad,yy);
+  ctx.fillText(fmtNow(),pad,yy);
 }
 
 // ===== 탭 =====
@@ -759,27 +832,32 @@ function goTab(id){
   document.getElementById('t-'+id).classList.add('active');
   document.getElementById('nb-'+id).classList.add('on');
   if(id==='gal')renderGallery();
-  if(id==='map'){initMap();setTimeout(()=>map&&map.invalidateSize(),100);}
-  if(id==='exp')updateStats();
+  if(id==='map'){initMap();[150,400,800].forEach(ms=>setTimeout(()=>map&&map.invalidateSize(),ms));}
 }
 
-// ===== 프로젝트 패널 =====
+// ===== 프로젝트 선택 =====
+function selectProject(proj){
+  selectedProject=proj;closeProjPanel();
+  document.getElementById('chip-dot').style.background=proj?proj.color:'var(--dim)';
+  document.getElementById('chip-label').textContent=proj?proj.name+' ▾':'프로젝트 선택 ▾';
+  updateHUD();
+}
+
 function openProjPanel(){document.getElementById('proj-panel').classList.add('open');renderProjSelectList();}
 function closeProjPanel(){document.getElementById('proj-panel').classList.remove('open');}
 
 async function renderProjSelectList(){
-  projects=await dbAll('projects');photos=await dbAll('photos');
+  await loadProjects();await loadAllPhotos();
   const el=document.getElementById('proj-select-list');
   if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
   el.innerHTML='';
   projects.forEach(p=>{
-    const cnt=photos.filter(ph=>ph.projectId===p.id).length;
+    const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
     const div=document.createElement('div');div.className='proj-item';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">사진 ${cnt}장</div></div>
-      <div class="proj-item-check">${selectedProject?.id===p.id?'✓':''}</div>`;
-    div.onclick=()=>selectProject(p);
-    el.appendChild(div);
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장 &nbsp;|&nbsp; 📁 내부저장소/현장캠/${p.name}/</div></div>
+      <div class="proj-item-check">${selectedProject?.name===p.name?'✓':''}</div>`;
+    div.onclick=()=>selectProject(p);el.appendChild(div);
   });
 }
 
@@ -787,16 +865,16 @@ function openProjMgr(){document.getElementById('proj-mgr-panel').classList.add('
 function closeProjMgr(){document.getElementById('proj-mgr-panel').classList.remove('open');}
 
 async function renderProjMgrList(){
-  projects=await dbAll('projects');photos=await dbAll('photos');
+  await loadProjects();await loadAllPhotos();
   const el=document.getElementById('proj-mgr-list');
   if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요</div>';return;}
   el.innerHTML='';
   projects.forEach(p=>{
-    const cnt=photos.filter(ph=>ph.projectId===p.id).length;
+    const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
     const div=document.createElement('div');div.className='proj-item';div.style.cursor='default';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">사진 ${cnt}장</div></div>
-      <button class="proj-del-btn" onclick="deleteProject(${p.id})">
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장</div></div>
+      <button class="proj-del-btn" onclick="doDeleteProject('${p.name}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
         </svg>
@@ -805,11 +883,12 @@ async function renderProjMgrList(){
   });
 }
 
-async function deleteProject(id){
-  if(!confirm('이 프로젝트를 삭제할까요?\n(사진은 유지됩니다)'))return;
-  await dbDel('projects',id);
-  if(selectedProject?.id===id)selectProject(null);
-  projects=await dbAll('projects');renderProjMgrList();toast('프로젝트 삭제됨');
+async function doDeleteProject(name){
+  if(!confirm(name+'\\n\\n이 프로젝트 폴더를 삭제할까요?\\n(사진·레이어 파일 모두 삭제됩니다)'))return;
+  const proj=projects.find(p=>p.name===name);
+  if(proj)await deleteProjectData(proj);
+  if(selectedProject?.name===name)selectProject(null);
+  renderProjMgrList();toast('프로젝트 삭제됨');
 }
 
 function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
@@ -818,22 +897,20 @@ function closeNewProjModal(){document.getElementById('new-proj-modal').classList
 async function confirmNewProj(){
   const name=document.getElementById('new-proj-inp').value.trim();
   if(!name){toast('이름을 입력해주세요');return;}
-  projects=await dbAll('projects');
   const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
-  const id=await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
-  projects=await dbAll('projects');
+  const proj=await createProjectData(name,color);
   closeNewProjModal();
   document.getElementById('new-proj-inp').value='';
-  selectProject({id,name,color});
+  selectProject({name,color,...proj});
   toast('✅ '+name+' 추가됨');
 }
 
 // ===== 갤러리 =====
 async function renderGallery(){
-  photos=await dbAll('photos');
+  await loadProjects();await loadAllPhotos();
   const list=document.getElementById('gal-list');
-  document.getElementById('gal-cnt').textContent=photos.length+'장';
-  if(!photos.length){
+  document.getElementById('gal-cnt').textContent=allPhotos.length+'장';
+  if(!allPhotos.length){
     list.innerHTML=`<div class="empty">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
@@ -843,218 +920,129 @@ async function renderGallery(){
     return;
   }
   list.innerHTML='';
-  [...photos].reverse().forEach(p=>{
-    const url=URL.createObjectURL(p.blob);
-    const t=new Date(p.time).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  allPhotos.forEach(p=>{
+    const url=getPhotoURL(p);
+    const t=fmtDt(p.time);
     const div=document.createElement('div');div.className='photo-item';
-    div.innerHTML=`<img class="thumb" src="${url}">
+    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\\n${t}`;
+    div.innerHTML=`<img class="thumb" src="${url}" onclick="openLightbox('${url}','${meta}')">
       <div class="pmeta">
         <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
         ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
-        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\n고도 '+Math.round(p.alt)+'m':''}</div>
+        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\\n고도 '+Math.round(p.alt)+'m':''}</div>
         <div class="ptime">${t}</div>
       </div>
-      <div class="pacts"><button class="ibtn del" onclick="delPhoto(${p.id})">
+      <div class="pacts"><button class="ibtn del" onclick="doDelPhoto(this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
         </svg></button></div>`;
+    div.querySelector('.ibtn.del').dataset.idx=allPhotos.indexOf(p);
     list.appendChild(div);
   });
 }
-async function delPhoto(id){await dbDel('photos',id);photos=await dbAll('photos');renderGallery();toast('삭제됨');}
+async function doDelPhoto(btn){
+  const idx=parseInt(btn.dataset.idx);
+  const p=allPhotos[idx];if(!p)return;
+  await deletePhotoData(p);await loadAllPhotos();renderGallery();toast('삭제됨');
+}
 
 // ===== 지도 =====
-let map;
-let photoLayerGroups={};   // projectKey → L.layerGroup
-let photoLayerVisible={};  // projectKey → boolean
-let leafletLayers={};      // layerId → L.geoJSON
+let map,baseTileLayer;
+let photoLayerGroups={},photoLayerVisible={},leafletLayers={};
 
 function initMap(){
-  if(map){refreshMarkers();renderLayerList();return;}
+  if(map){refreshMarkers();renderSettingsLayerList();return;}
   map=L.map('map',{zoomControl:false}).setView([36.5,127.8],7);
-  // 저장된 지도 타입 복원
-  const savedType=localStorage.getItem('map_type')||'esri';
+  const savedType=localStorage.getItem('map_type')||'vworld';
   const savedKey=localStorage.getItem('vworld_key')||'';
-  const initConfigs={
-    'esri':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI',maxZoom:19}},
-    'vworld':{url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',opt:{attribution:'© VWorld',maxZoom:19}},
-    'esri-sat':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI World Imagery',maxZoom:19,maxNativeZoom:18}},
-    'kakao-sat':{url:'https://map{s}.daumcdn.net/map_skyview/L{z}/{y}/{x}.jpg?v=250',opt:{attribution:'© Kakao',subdomains:'0123',maxZoom:19,maxNativeZoom:17}},
-    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:'© VWorld 위성',maxZoom:19}},
-    'osm':{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opt:{attribution:'© OpenStreetMap',maxZoom:19}},
-    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${savedKey}/gray/{z}/{y}/{x}.png`,opt:{attribution:'© VWorld 지적도',maxZoom:19}}
-  };
-  const needsKey=['vworld-gray'];
-  const useType=(needsKey.includes(savedType)&&!savedKey)?'esri':savedType;
-  const initCfg=initConfigs[useType]||initConfigs['esri'];
-  baseTileLayer=L.tileLayer(initCfg.url,initCfg.opt);
+  baseTileLayer=makeTileLayer(savedType,savedKey);
   baseTileLayer.addTo(map);
-  setTimeout(()=>map.invalidateSize(),300);
   L.control.zoom({position:'bottomright'}).addTo(map);
   map.on('click',onMapClick);
+  if(navigator.geolocation)
+    navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],15),()=>{});
   refreshMarkers();
   loadLayersToMap();
 }
 
+function makeTileLayer(type,key){
+  const cfgs={
+    'vworld':{url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',opt:{attribution:'© VWorld',maxZoom:19,crossOrigin:''}},
+    'esri-sat':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI',maxZoom:19,maxNativeZoom:18,crossOrigin:''}},
+    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:'© VWorld 위성',maxZoom:19,crossOrigin:''}},
+    'osm':{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opt:{attribution:'© OpenStreetMap',maxZoom:19,crossOrigin:''}},
+    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,opt:{attribution:'© VWorld 지적도',maxZoom:19,crossOrigin:''}}
+  };
+  const cfg=cfgs[type]||cfgs['vworld'];
+  return L.tileLayer(cfg.url,cfg.opt);
+}
+
+function setMapType(type){
+  if(!map){toast('지도 탭을 먼저 열어주세요');return;}
+  const key=localStorage.getItem('vworld_key')||'';
+  if(type==='vworld-gray'&&!key){toast('지적도는 VWorld API 키가 필요해요');return;}
+  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('mtype-'+type);if(btn)btn.classList.add('on');
+  localStorage.setItem('map_type',type);
+  if(baseTileLayer)map.removeLayer(baseTileLayer);
+  baseTileLayer=makeTileLayer(type,key);
+  baseTileLayer.addTo(map);baseTileLayer.bringToBack();
+  closeSettings();
+}
+
 async function refreshMarkers(){
   if(!map)return;
-  photos=await dbAll('photos');
-
-  // 기존 photo LayerGroup 전부 제거
+  await loadProjects();await loadAllPhotos();
   Object.values(photoLayerGroups).forEach(lg=>map.removeLayer(lg));
   photoLayerGroups={};
-
-  const gpsPhotos=photos.filter(p=>p.lat&&p.lon);
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
   if(!gpsPhotos.length)return;
-
-  // 프로젝트별 그룹핑
-  const groups={};
+  const groups={},bounds=[];
   gpsPhotos.forEach(p=>{
-    const key=p.projectId!=null?String(p.projectId):'none';
+    const key=p.projectName||'none';
     if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
     groups[key].photos.push(p);
   });
-
-  const bounds=[];
   Object.entries(groups).forEach(([key,g])=>{
     if(photoLayerVisible[key]===undefined)photoLayerVisible[key]=true;
     const lg=L.layerGroup();
     g.photos.forEach(p=>{
-      const url=URL.createObjectURL(p.blob);
-      const t=new Date(p.time).toLocaleString('ko-KR',{hour12:false});
+      const url=getPhotoURL(p);
       const icon=L.divIcon({className:'',
         html:`<div style="width:34px;height:34px;background:${g.color};border:2.5px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
         iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-38]});
       L.marker([p.lat,p.lon],{icon})
-        .bindPopup(`<img class="popup-img" src="${url}">
+        .bindPopup(`<img class="popup-img" src="${url}" onclick="openLightbox('${url}','${p.projectName||''}')" style="cursor:pointer">
           <div class="popup-title">${p.projectName||'(프로젝트 없음)'}</div>
           ${p.description?`<div class="popup-desc">▸ ${p.description}</div>`:''}
-          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>${p.alt?'고도 '+Math.round(p.alt)+'m<br>':''}${t}</div>`,
+          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}</div>`,
           {maxWidth:220}).addTo(lg);
       bounds.push([p.lat,p.lon]);
     });
     photoLayerGroups[key]=lg;
     if(photoLayerVisible[key])lg.addTo(map);
   });
-
   if(bounds.length)map.fitBounds(bounds,{padding:[50,50]});
-  if(document.getElementById('layer-panel').classList.contains('open'))renderLayerList();
+  if(document.getElementById('settings-panel').classList.contains('open'))renderSettingsLayerList();
 }
 
 function togglePhotoLayer(key){
   photoLayerVisible[key]=!photoLayerVisible[key];
   const lg=photoLayerGroups[key];
   if(lg){photoLayerVisible[key]?lg.addTo(map):map.removeLayer(lg);}
-  renderLayerList();
+  renderSettingsLayerList();
 }
-
 function toggleAllPhotoLayers(visible){
   Object.keys(photoLayerGroups).forEach(key=>{
     photoLayerVisible[key]=visible;
     const lg=photoLayerGroups[key];
     if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
   });
-  renderLayerList();
-}
-
-// ===== 레이어 패널 =====
-function openLayerPanel(){document.getElementById('layer-panel').classList.add('open');renderLayerList();}
-function closeLayerPanel(){document.getElementById('layer-panel').classList.remove('open');}
-
-async function renderLayerList(){
-  photos=await dbAll('photos');layers=await dbAll('layers');
-  const el=document.getElementById('layer-list');
-  let html='';
-
-  // ── 📸 사진 섹션 ──
-  const gpsPhotos=photos.filter(p=>p.lat&&p.lon);
-  if(gpsPhotos.length>0){
-    // 프로젝트 그룹 집계
-    const groups={};
-    gpsPhotos.forEach(p=>{
-      const key=p.projectId!=null?String(p.projectId):'none';
-      if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',cnt:0};
-      groups[key].cnt++;
-    });
-    const allOn=Object.keys(groups).every(k=>photoLayerVisible[k]!==false);
-    html+=`<div class="layer-section-hdr">
-      <span>📸 사진</span>
-      <button class="section-toggle-all" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
-    </div>`;
-    Object.entries(groups).forEach(([key,g])=>{
-      const on=photoLayerVisible[key]!==false;
-      html+=`<div class="layer-item">
-        <div class="layer-color" style="background:${g.color}"></div>
-        <div class="layer-info">
-          <div class="layer-name">${g.name}</div>
-          <div class="layer-sub">📷 ${g.cnt}장</div>
-        </div>
-        <button class="toggle-btn ${on?'on':'off'}" onclick="togglePhotoLayer('${key}')"></button>
-      </div>`;
-    });
-  }
-
-  // ── 🗺️ 지도 레이어 섹션 ──
-  if(layers.length>0){
-    html+=`<div class="layer-section-hdr"><span>🗺️ 지도 레이어</span></div>`;
-    layers.forEach(l=>{
-      html+=`<div class="layer-item">
-        <div class="layer-color" style="background:${l.color}"></div>
-        <div class="layer-info">
-          <div class="layer-name">${l.name}</div>
-          <div class="layer-sub">${l.project}</div>
-        </div>
-        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer(${l.id})"></button>
-        <button class="del-btn" onclick="deleteLayer(${l.id})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-          </svg>
-        </button>
-      </div>`;
-    });
-  }
-
-  if(!gpsPhotos.length&&!layers.length){
-    html='<div class="no-items">레이어가 없어요<br>사진을 찍거나 파일을 추가해보세요</div>';
-  }
-  el.innerHTML=html;
-}
-
-async function toggleLayer(id){
-  layers=await dbAll('layers');
-  const l=layers.find(x=>x.id===id);if(!l)return;
-  l.visible=!l.visible;await dbPut('layers',l);
-  if(leafletLayers[id]){l.visible?map.addLayer(leafletLayers[id]):map.removeLayer(leafletLayers[id]);}
-  renderLayerList();
-}
-
-async function deleteLayer(id){
-  if(leafletLayers[id]){map.removeLayer(leafletLayers[id]);delete leafletLayers[id];}
-  await dbDel('layers',id);layers=await dbAll('layers');renderLayerList();toast('레이어 삭제됨');
-}
-
-async function loadLayersToMap(){
-  layers=await dbAll('layers');layers.forEach(l=>addLeafletLayer(l));
-}
-
-function addLeafletLayer(l){
-  if(!map)return;
-  if(leafletLayers[l.id])map.removeLayer(leafletLayers[l.id]);
-  const lf=L.geoJSON(l.geojson,{
-    style:{color:l.color,weight:2.5,fillOpacity:.15},
-    pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6,color:l.color,fillColor:l.color,fillOpacity:.9}),
-    onEachFeature:(f,lf2)=>{
-      const p=f.properties||{};
-      lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.project}</div>`);
-    }
-  });
-  leafletLayers[l.id]=lf;
-  if(l.visible)lf.addTo(map);
+  renderSettingsLayerList();
 }
 
 function locateMe(){navigator.geolocation.getCurrentPosition(p=>{if(map)map.setView([p.coords.latitude,p.coords.longitude],16);});}
 
-// ===== 지도 클릭 좌표 =====
 async function onMapClick(e){
   const {lat,lng}=e.latlng;const ls=lat.toFixed(6),lo=lng.toFixed(6);
   const popup=L.popup({maxWidth:260}).setLatLng(e.latlng)
@@ -1065,7 +1053,7 @@ async function onMapClick(e){
       <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button></div>
     </div>`).openOn(map);
   try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko`);
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
     const d=await r.json();const addr=d.display_name||'주소 없음';
     const el=document.getElementById('paddr');
     if(el){el.textContent=addr;
@@ -1074,29 +1062,74 @@ async function onMapClick(e){
     }
   }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent='주소 검색 실패';}
 }
-
 function copyText(t){
   if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('📋 복사됨!'));
   else{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('📋 복사됨!');}
 }
 
-// ===== 파일 선택 =====
+// ===== 레이어 =====
+async function loadLayersToMap(){
+  await loadAllLayers();
+  allLayers.forEach(l=>addLeafletLayer(l));
+}
+
+function addLeafletLayer(l){
+  if(!map)return;
+  const key=l.geojsonPath||l.id;
+  if(leafletLayers[key])map.removeLayer(leafletLayers[key]);
+  let geojson=l.geojson;
+  if(!geojson&&IS_APK&&l.geojsonPath){
+    try{geojson=JSON.parse(AndroidBridge.readText(l.geojsonPath));}catch(e){}
+  }
+  if(!geojson)return;
+  const lf=L.geoJSON(geojson,{
+    style:{color:l.color,weight:2.5,fillOpacity:.15},
+    pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6,color:l.color,fillColor:l.color,fillOpacity:.9}),
+    onEachFeature:(f,lf2)=>{
+      const p=f.properties||{};
+      lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.projectName||l.project||''}</div>`);
+    }
+  });
+  leafletLayers[key]=lf;
+  if(l.visible)lf.addTo(map);
+}
+
+async function toggleLayer(layerKey){
+  const l=allLayers.find(x=>(x.geojsonPath||x.id)===layerKey);if(!l)return;
+  const newVis=await toggleLayerData(l);
+  const lf=leafletLayers[layerKey];
+  if(lf){newVis?lf.addTo(map):map.removeLayer(lf);}
+  renderSettingsLayerList();
+}
+
+async function deleteLayer(layerKey){
+  const l=allLayers.find(x=>(x.geojsonPath||x.id)===layerKey);if(!l)return;
+  if(leafletLayers[layerKey]){map.removeLayer(leafletLayers[layerKey]);delete leafletLayers[layerKey];}
+  await deleteLayerData(l);
+  renderSettingsLayerList();toast('레이어 삭제됨');
+}
+
 // ===== 설정 패널 =====
-function openSettings(){
+async function openSettings(){
   document.getElementById('settings-overlay').classList.add('show');
   document.getElementById('settings-panel').classList.add('open');
-  // 저장된 키 표시
+  if(IS_APK){
+    const p=AndroidBridge.getBasePath();
+    basePath=p;
+    document.getElementById('base-path-display').textContent=p;
+  }
   const key=localStorage.getItem('vworld_key')||'';
   if(key){
     document.getElementById('vworld-key-inp').value=key;
     document.getElementById('vworld-key-status').textContent='✅ API 키 저장됨';
     document.getElementById('vworld-key-status').style.color='var(--gps)';
   }
-  // 현재 지도 타입 표시
-  const cur=localStorage.getItem('map_type')||'osm';
+  const cur=localStorage.getItem('map_type')||'vworld';
   document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
-  const curBtn=document.getElementById('mtype-'+cur);
-  if(curBtn)curBtn.classList.add('on');
+  const curBtn=document.getElementById('mtype-'+cur);if(curBtn)curBtn.classList.add('on');
+  await loadProjects();await loadAllPhotos();await loadAllLayers();
+  renderSettingsLayerList();
+  renderExportInSettings();
 }
 function closeSettings(){
   document.getElementById('settings-overlay').classList.remove('show');
@@ -1106,116 +1139,84 @@ function saveVWorldKey(){
   const key=document.getElementById('vworld-key-inp').value.trim();
   if(!key){toast('API 키를 입력해주세요');return;}
   localStorage.setItem('vworld_key',key);
-  document.getElementById('vworld-key-status').textContent='✅ 저장됨! 지도 탭에서 VWorld 선택해보세요';
+  document.getElementById('vworld-key-status').textContent='✅ 저장됨';
   document.getElementById('vworld-key-status').style.color='var(--gps)';
   toast('API 키 저장됨');
 }
 
-// ===== 지도 타입 전환 =====
-let baseTileLayer=null;
-function setMapType(type){
-  if(!map){toast('지도 탭을 먼저 열어주세요');return;}
-  const key=localStorage.getItem('vworld_key')||'';
+// ===== 설정 내 레이어 목록 =====
+function renderSettingsLayerList(){
+  const el=document.getElementById('settings-layer-list');if(!el)return;
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
 
-  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
-  const btn=document.getElementById('mtype-'+type);
-  if(btn)btn.classList.add('on');
-  localStorage.setItem('map_type',type);
+  let html='';
 
-  if(baseTileLayer)map.removeLayer(baseTileLayer);
+  // 사진 레이어
+  if(gpsPhotos.length>0){
+    const groups={};
+    gpsPhotos.forEach(p=>{
+      const key=p.projectName||'none';
+      if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',cnt:0};
+      groups[key].cnt++;
+    });
+    const allOn=Object.keys(groups).every(k=>photoLayerVisible[k]!==false);
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--dim);font-weight:700">📸 사진</span>
+      <button style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+    </div>`;
+    Object.entries(groups).forEach(([key,g])=>{
+      const on=photoLayerVisible[key]!==false;
+      html+=`<div class="layer-item">
+        <div class="layer-color" style="background:${g.color}"></div>
+        <div class="layer-info"><div class="layer-name">${g.name}</div><div class="layer-sub">📷 ${g.cnt}장</div></div>
+        <button class="toggle-btn ${on?'on':'off'}" onclick="togglePhotoLayer('${key}')"></button>
+      </div>`;
+    });
+  }
 
-  const tileConfigs={
-    'esri':{
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-      opt:{attribution:'© ESRI',maxZoom:19}
-    },
-    'vworld':{
-      url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',
-      opt:{attribution:'© VWorld',maxZoom:19}
-    },
-    'esri-sat':{
-      url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      opt:{attribution:'© ESRI World Imagery',maxZoom:19,maxNativeZoom:18}
-    },
-    'kakao-sat':{
-      url:'https://map{s}.daumcdn.net/map_skyview/L{z}/{y}/{x}.jpg?v=250',
-      opt:{attribution:'© Kakao',subdomains:'0123',maxZoom:19,maxNativeZoom:17}
-    },
-    'vworld-sat':{
-      url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',
-      opt:{attribution:'© VWorld 위성',maxZoom:19}
-    },
-    'osm':{
-      url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      opt:{attribution:'© OpenStreetMap',maxZoom:19}
-    },
-    'vworld-gray':{
-      url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,
-      opt:{attribution:'© VWorld 지적도',maxZoom:19}
-    }
-  };
-  const needsKey=['vworld-gray'];
-  if(needsKey.includes(type)&&!key){toast('지적도는 VWorld API 키가 필요해요');openSettings();return;}
-  const cfg=tileConfigs[type]||tileConfigs['esri'];
-  baseTileLayer=L.tileLayer(cfg.url,cfg.opt);
-  baseTileLayer.addTo(map);
-  baseTileLayer.bringToBack();
-  toast(cfg.opt.attribution+' 적용됨');
-  closeSettings();
+  // 지도 레이어
+  if(allLayers.length>0){
+    html+=`<div style="font-size:11px;color:var(--dim);font-weight:700;margin:10px 0 6px">🗺️ 지도 레이어</div>`;
+    allLayers.forEach(l=>{
+      const key=l.geojsonPath||l.id;
+      html+=`<div class="layer-item">
+        <div class="layer-color" style="background:${l.color}"></div>
+        <div class="layer-info"><div class="layer-name">${l.name}</div><div class="layer-sub">${l.projectName||l.project||''}</div></div>
+        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer('${key}')"></button>
+        <button class="del-btn" onclick="deleteLayer('${key}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+          </svg>
+        </button>
+      </div>`;
+    });
+  }
+
+  if(!gpsPhotos.length&&!allLayers.length){
+    html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
+  }
+  el.innerHTML=html;
 }
 
-// ===== URL로 레이어 불러오기 =====
-async function loadFromURL(){
-  const url=document.getElementById('layer-url-inp').value.trim();
-  if(!url){toast('URL을 입력해주세요');return;}
-  try{
-    toast('URL 불러오는 중...');
-    const res=await fetch(url);
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const filename=url.split('/').pop().split('?')[0]||'layer';
-    let file;
-    if(url.toLowerCase().includes('.kmz')||res.headers.get('content-type')?.includes('kmz')){
-      const blob=await res.blob();
-      file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',{type:'application/vnd.google-earth.kmz'});
-    }else{
-      const text=await res.text();
-      const ext=filename.endsWith('.kml')?'.kml':'.kml';
-      file=new File([text],filename.endsWith('.kml')?filename:filename+ext,{type:'application/vnd.google-earth.kml+xml'});
-    }
-    pendingFile=file;
-    document.getElementById('layer-url-inp').value='';
-    document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
-    await renderLayerProjList();
-    document.getElementById('layer-proj-panel').classList.add('open');
-  }catch(err){toast('URL 불러오기 실패: '+err.message);}
-}
-
-// ===== 파일 선택 → 프로젝트 선택 패널 =====
+// ===== 파일 불러오기 =====
 let pendingFile=null;
-
 async function onFileSelected(e){
-  const files=[...e.target.files]; if(!files.length)return;
+  const files=[...e.target.files];if(!files.length)return;
   e.target.value='';
-
-  // SHP 다중 파일 감지 (.shp .dbf .prj)
   const shpFile=files.find(f=>f.name.toLowerCase().endsWith('.shp'));
   if(shpFile){
     const dbfFile=files.find(f=>f.name.toLowerCase().endsWith('.dbf'));
     const prjFile=files.find(f=>f.name.toLowerCase().endsWith('.prj'));
     const name=shpFile.name.replace(/\.shp$/i,'');
-    // shpjs용 객체 생성
     const shpBuf=await shpFile.arrayBuffer();
     const dbfBuf=dbfFile?await dbfFile.arrayBuffer():null;
     const prjBuf=prjFile?await prjFile.arrayBuffer():null;
-    // 가상 파일로 래핑
-    pendingFile={_shpMulti:true, name, shpBuf, dbfBuf, prjBuf};
+    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf,prjBuf};
     document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
-    await openLayerProjPanel(); return;
+  }else{
+    pendingFile=files[0];
+    document.getElementById('layer-panel-fname').textContent='📄 '+files[0].name;
   }
-
-  // 단일 파일
-  pendingFile=files[0];
-  document.getElementById('layer-panel-fname').textContent='📄 '+files[0].name;
   await openLayerProjPanel();
 }
 
@@ -1223,99 +1224,90 @@ async function openLayerProjPanel(){
   document.getElementById('layer-proj-panel').classList.add('open');
   await renderLayerProjList();
 }
-
-function cancelLayerProj(){
-  pendingFile=null;
-  document.getElementById('layer-proj-panel').classList.remove('open');
-}
+function cancelLayerProj(){pendingFile=null;document.getElementById('layer-proj-panel').classList.remove('open');}
 
 async function renderLayerProjList(){
-  projects=await dbAll('projects');
-  layers=await dbAll('layers');
+  await loadProjects();await loadAllLayers();
   const el=document.getElementById('layer-proj-list');
-  if(!projects.length){
-    el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';
-    return;
-  }
+  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
   el.innerHTML='';
   projects.forEach(p=>{
-    const layerCnt=layers.filter(l=>l.project===p.name).length;
-    const div=document.createElement('div');
-    div.className='proj-item';
-    div.innerHTML=`
-      <div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info">
-        <div class="proj-item-name">${p.name}</div>
-        <div class="proj-item-cnt">레이어 ${layerCnt}개</div>
-      </div>
+    const lc=allLayers.filter(l=>(l.projectName||l.project)===p.name).length;
+    const div=document.createElement('div');div.className='proj-item';
+    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">레이어 ${lc}개</div></div>
       <div style="font-size:18px;color:var(--dim)">›</div>`;
-    div.onclick=()=>selectLayerProject(p.name);
-    el.appendChild(div);
+    div.onclick=()=>selectLayerProject(p.name);el.appendChild(div);
   });
 }
 
 async function selectLayerProject(projName){
   document.getElementById('layer-proj-panel').classList.remove('open');
   if(!pendingFile)return;
-  await loadLayerFile(pendingFile, projName);
-  pendingFile=null;
+  await loadLayerFile(pendingFile,projName);pendingFile=null;
 }
 
-function openNewProjFromLayer(){
-  document.getElementById('layer-new-proj-modal').classList.add('show');
-  setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);
-}
-
-function closeLayerNewProj(){
-  document.getElementById('layer-new-proj-modal').classList.remove('show');
-}
-
+function openNewProjFromLayer(){document.getElementById('layer-new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);}
+function closeLayerNewProj(){document.getElementById('layer-new-proj-modal').classList.remove('show');}
 async function confirmLayerNewProj(){
   const name=document.getElementById('layer-new-proj-inp').value.trim();
   if(!name){toast('이름을 입력해주세요');return;}
-  projects=await dbAll('projects');
   const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
-  await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
-  projects=await dbAll('projects');
+  await createProjectData(name,color);
   document.getElementById('layer-new-proj-inp').value='';
   closeLayerNewProj();
   await selectLayerProject(name);
 }
 
-async function loadLayerFile(file,project){
+async function loadLayerFile(file,projectName){
   toast('파일 불러오는 중...');
   try{
-    let geojson, displayName;
-
-    // SHP 다중 파일 (USB로 넣은 경우)
+    let geojson,displayName;
     if(file._shpMulti){
       displayName=file.name;
       const shpObj={shp:file.shpBuf};
       if(file.dbfBuf)shpObj.dbf=file.dbfBuf;
       if(file.prjBuf)shpObj.prj=file.prjBuf;
       geojson=await shp(shpObj);
-    }
-    // KMZ (ZIP 안에 KML)
-    else if(file.name.toLowerCase().endsWith('.kmz')){
+    }else if(file.name.toLowerCase().endsWith('.kmz')){
       displayName=file.name.replace(/\.kmz$/i,'');
       const zip=await JSZip.loadAsync(await file.arrayBuffer());
-      const kmlFile=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
-      if(!kmlFile){toast('KMZ 안에 KML이 없어요');return;}
-      const kmlText=await kmlFile.async('string');
-      geojson=kmlToGeoJSON(new DOMParser().parseFromString(kmlText,'text/xml'));
-    }
-    else if(file.name.endsWith('.zip')){displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());}
+      const kmlF=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
+      if(!kmlF){toast('KMZ 안에 KML이 없어요');return;}
+      geojson=kmlToGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'));
+    }else if(file.name.endsWith('.zip')){displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());}
     else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());}
     else if(file.name.endsWith('.kml')){displayName=file.name.replace(/\.kml$/i,'');geojson=kmlToGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'));}
     else{toast('지원하지 않는 파일 형식');return;}
     const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
     const name=displayName||file.name.replace(/\.[^.]+$/,'');
-    const layerData={name,project,color,geojson,visible:true};
-    const id=await dbAdd('layers',layerData);layerData.id=id;
-    layers=await dbAll('layers');addLeafletLayer(layerData);
-    try{const b=leafletLayers[id]?.getBounds();if(b?.isValid())map?.fitBounds(b,{padding:[40,40]});}catch(e2){}
-    renderLayerList();toast('✅ '+name+' 추가됨');
+    await saveLayerData(projectName,name,geojson,color,true);
+    const newLayer=allLayers[allLayers.length-1];
+    if(newLayer)addLeafletLayer(newLayer);
+    try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
+    renderSettingsLayerList();toast('✅ '+name+' 추가됨');
   }catch(err){toast('파일 읽기 실패: '+err.message);console.error(err);}
+}
+
+async function loadFromURL(){
+  const url=document.getElementById('layer-url-inp').value.trim();
+  if(!url){toast('URL을 입력해주세요');return;}
+  try{
+    toast('URL 불러오는 중...');
+    const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);
+    const filename=url.split('/').pop().split('?')[0]||'layer';
+    let file;
+    if(url.toLowerCase().includes('.kmz')){
+      const blob=await res.blob();file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',{type:'application/vnd.google-earth.kmz'});
+    }else{
+      const text=await res.text();file=new File([text],filename.endsWith('.kml')?filename:filename+'.kml',{type:'application/vnd.google-earth.kml+xml'});
+    }
+    pendingFile=file;
+    document.getElementById('layer-url-inp').value='';
+    document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
+    await renderLayerProjList();
+    document.getElementById('layer-proj-panel').classList.add('open');
+  }catch(err){toast('URL 불러오기 실패: '+err.message);}
 }
 
 function kmlToGeoJSON(kml){
@@ -1330,294 +1322,204 @@ function kmlToGeoJSON(kml){
   return{type:'FeatureCollection',features};
 }
 
-// ===== 내보내기 =====
-async function updateStats(){
-  photos=await dbAll('photos');layers=await dbAll('layers');projects=await dbAll('projects');
-  renderExportTab();
-}
-
-async function renderExportTab(){
-  photos=await dbAll('photos');projects=await dbAll('projects');
-  const el=document.getElementById('exp-list');
-  if(!el)return;
+// ===== 내보내기 (설정 내) =====
+function renderExportInSettings(){
+  const el=document.getElementById('settings-exp-list');if(!el)return;
   let html='';
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
+  if(!gpsPhotos.length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:0 0 10px">GPS 사진이 없어요</div>';return;}
 
-  if(!photos.length){
-    html=`<div class="empty" style="padding:60px 40px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.25">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      <p style="font-size:14px">아직 사진이 없어요</p>
-      <small style="font-size:12px;opacity:.6">카메라 탭에서 촬영해보세요</small>
+  const groups={};
+  gpsPhotos.forEach(p=>{
+    const key=p.projectName||'none';
+    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    groups[key].photos.push(p);
+  });
+
+  Object.entries(groups).forEach(([key,g])=>{
+    const safe=encodeURIComponent(g.name);
+    html+=`<div class="exp-card">
+      <div class="exp-card-hdr">
+        <div class="exp-proj-dot" style="background:${g.color}"></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">${g.name}</div><div class="exp-proj-stat">📷 ${g.photos.length}장 · GPS ${g.photos.length}장</div></div>
+      </div>
+      <div class="exp-fmt-row">
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${safe}')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${safe}')"><span>📄</span><span>KML</span><small>핀만</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${safe}')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+      </div>
     </div>`;
-    el.innerHTML=html;return;
-  }
-
-  // 프로젝트별 카드
-  const projMap={};
-  photos.forEach(p=>{
-    const key=p.projectId!=null?String(p.projectId):'none';
-    if(!projMap[key])projMap[key]={id:p.projectId,name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
-    projMap[key].photos.push(p);
   });
 
-  // 프로젝트 순서: DB 순서 + 미분류 마지막
-  const orderedKeys=[
-    ...projects.map(p=>String(p.id)).filter(k=>projMap[k]),
-    ...(projMap['none']?['none']:[])
-  ];
-
-  orderedKeys.forEach(key=>{
-    const g=projMap[key];
-    const total=g.photos.length;
-    const gps=g.photos.filter(p=>p.lat).length;
-    const safeName=g.name.replace(/'/g,"\\'");
-    const fileSlug=g.name.replace(/\s+/g,'_').replace(/[^\w가-힣]/g,'');
-    html+=`
-      <div class="exp-card">
-        <div class="exp-card-hdr">
-          <div class="exp-proj-dot" style="background:${g.color}"></div>
-          <div class="exp-proj-info">
-            <div class="exp-proj-name">${g.name}</div>
-            <div class="exp-proj-stat">사진 ${total}장 &nbsp;·&nbsp; GPS ${gps}장</div>
-          </div>
-        </div>
-        ${gps===0?`<div class="exp-no-gps">GPS 좌표가 없어 지도 내보내기가 안 돼요</div>`:`
-        <div class="exp-fmt-row">
-          <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${fileSlug}')">
-            <span>📦</span><span>KMZ</span><small>핀+사진</small>
-          </button>
-          <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${fileSlug}')">
-            <span>📄</span><span>KML</span><small>핀만</small>
-          </button>
-          <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${fileSlug}')">
-            <span>🗺️</span><span>GeoJSON</span><small>QGIS용</small>
-          </button>
-        </div>`}
-      </div>`;
-  });
-
-  // 전체 내보내기 (2개 이상 프로젝트일 때만)
-  if(orderedKeys.length>1){
-    const totalGps=photos.filter(p=>p.lat).length;
-    html+=`
-      <div class="exp-card exp-all-card">
-        <div class="exp-card-hdr">
-          <div class="exp-proj-dot" style="background:var(--dim)"></div>
-          <div class="exp-proj-info">
-            <div class="exp-proj-name">전체 내보내기</div>
-            <div class="exp-proj-stat">사진 ${photos.length}장 &nbsp;·&nbsp; GPS ${totalGps}장</div>
-          </div>
-        </div>
-        <div class="exp-fmt-row">
-          <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz','전체')">
-            <span>📦</span><span>KMZ</span><small>핀+사진</small>
-          </button>
-          <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml','전체')">
-            <span>📄</span><span>KML</span><small>핀만</small>
-          </button>
-          <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson','전체')">
-            <span>🗺️</span><span>GeoJSON</span><small>QGIS용</small>
-          </button>
-        </div>
-      </div>`;
+  if(Object.keys(groups).length>1){
+    html+=`<div class="exp-card exp-all-card">
+      <div class="exp-card-hdr">
+        <div class="exp-proj-dot" style="background:var(--dim)"></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">전체 내보내기</div><div class="exp-proj-stat">📷 ${gpsPhotos.length}장</div></div>
+      </div>
+      <div class="exp-fmt-row">
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz','전체')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml','전체')"><span>📄</span><span>KML</span><small>핀만</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson','전체')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+      </div>
+    </div>`;
   }
-
   el.innerHTML=html;
 }
 
-async function exportByProject(key, format, nameSlug){
-  photos=await dbAll('photos');
-  const target = key==='all' ? photos :
-    key==='none' ? photos.filter(p=>p.projectId==null) :
-    photos.filter(p=>String(p.projectId)===key);
-
-  if(!target.length){toast('사진이 없어요');return;}
-  const gpsPhotos=target.filter(p=>p.lat&&p.lon);
-  if(!gpsPhotos.length){toast('GPS 좌표가 있는 사진이 없어요');return;}
-
+async function exportByProject(key,format,nameSlug){
+  const slug=decodeURIComponent(nameSlug);
+  const list=key==='all'?allPhotos.filter(p=>p.lat&&p.lon):
+    key==='none'?allPhotos.filter(p=>(!p.projectName)&&p.lat&&p.lon):
+    allPhotos.filter(p=>p.projectName===key&&p.lat&&p.lon);
+  if(!list.length){toast('GPS 사진이 없어요');return;}
   toast('생성 중...');
   try{
-    if(format==='kmz') await doExportKMZ(gpsPhotos, nameSlug);
-    else if(format==='kml') doExportKML(gpsPhotos, nameSlug);
-    else doExportGeoJSON(gpsPhotos, nameSlug);
+    if(format==='kmz')await doKMZ(list,slug);
+    else if(format==='kml')doKML(list,slug);
+    else doGeoJSON(list,slug);
   }catch(e){toast('내보내기 실패: '+e.message);}
 }
 
-async function doExportKMZ(list, nameSlug){
+async function doKMZ(list,slug){
   const zip=new JSZip(),imgs=zip.folder('files');let marks='';
   for(let i=0;i<list.length;i++){
-    const p=list[i];
-    const fn=`photo_${i+1}.jpg`;imgs.file(fn,await p.blob.arrayBuffer());
+    const p=list[i];const fn=`photo_${i+1}.jpg`;
+    let blob;
+    if(IS_APK){
+      const b64=AndroidBridge.readFileAsBase64(p.path);
+      const res=await fetch('data:image/jpeg;base64,'+b64);
+      blob=await res.blob();
+    }else{blob=p.blob;}
+    imgs.file(fn,await blob.arrayBuffer());
     marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name>
     <description><![CDATA[<img src="files/${fn}" width="300"><br>
     <b>${p.projectName||''}</b><br>${p.description?'▸ '+p.description+'<br>':''}
-    시간: ${new Date(p.time).toLocaleString('ko-KR')}<br>
-    좌표: ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}<br>${p.alt?'고도: '+Math.round(p.alt)+'m':''}]]></description>
+    ${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}]]></description>
     <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
     <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
   }
-  zip.file('doc.kml',`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${nameSlug}</name>${marks}</Document></kml>`);
-  saveFile(await zip.generateAsync({type:'blob'}),`${nameSlug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
+  zip.file('doc.kml',`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`);
+  saveFile(await zip.generateAsync({type:'blob'}),`${slug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
 }
-
-function doExportKML(list, nameSlug){
+function doKML(list,slug){
   let marks='';
-  list.forEach((p,i)=>{marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name><description>${p.description||''} ${new Date(p.time).toLocaleString('ko-KR')}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
-  saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${nameSlug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${nameSlug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
+  list.forEach((p,i)=>{marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name><description>${p.description||''} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
+  saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${slug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
+}
+function doGeoJSON(list,slug){
+  const features=list.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat,p.alt||0]},properties:{project:p.projectName||'',description:p.description||'',time:p.time}}));
+  saveFile(new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'}),`${slug}_${dateStr()}.geojson`,'application/json');
 }
 
-function doExportGeoJSON(list, nameSlug){
-  const features=list.map((p,i)=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat,p.alt||0]},properties:{project:p.projectName||'',description:p.description||'',time:p.time,altitude:p.alt?Math.round(p.alt):null}}));
-  saveFile(new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'}),`${nameSlug}_${dateStr()}.geojson`,'application/json');
+function saveFile(blob,filename,mimeType){
+  if(window.AndroidBridge){
+    const reader=new FileReader();
+    reader.onload=()=>AndroidBridge.saveFile(reader.result,filename,mimeType);
+    reader.readAsDataURL(blob);
+  }else{
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;document.body.appendChild(a);a.click();
+    document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
 }
 
 // ===== KMZ 가져오기 =====
 async function onImportKMZ(e){
-  const file=e.target.files[0]; if(!file)return;
-  e.target.value='';
-  await importKMZ(file);
-}
-
-async function importKMZ(file){
+  const file=e.target.files[0];if(!file)return;e.target.value='';
   const prog=document.getElementById('import-prog');
   const bar=document.getElementById('import-bar');
-  const progTxt=document.getElementById('import-prog-txt');
-
+  const txt=document.getElementById('import-prog-txt');
   try{
-    if(prog){prog.classList.add('show');bar.style.width='10%';progTxt.textContent='KMZ 읽는 중...';}
-
+    prog.classList.add('show');bar.style.width='10%';txt.textContent='KMZ 읽는 중...';
     const zip=await JSZip.loadAsync(await file.arrayBuffer());
-
-    // doc.kml 찾기
-    const kmlFile=zip.file('doc.kml');
-    if(!kmlFile){toast('KMZ 형식이 맞지 않아요 (doc.kml 없음)');return;}
-
-    if(prog){bar.style.width='25%';progTxt.textContent='KML 분석 중...';}
-
-    const kmlText=await kmlFile.async('string');
-    const kml=new DOMParser().parseFromString(kmlText,'text/xml');
-    const placemarks=[...kml.querySelectorAll('Placemark')];
-
-    if(!placemarks.length){toast('불러올 사진이 없어요');return;}
-
-    // 프로젝트 맵 (이름 → 객체)
-    projects=await dbAll('projects');
-    const projMap={};
-    projects.forEach(p=>projMap[p.name]=p);
-
-    let imported=0, skipped=0;
-
-    for(let i=0;i<placemarks.length;i++){
-      const pm=placemarks[i];
-
-      if(prog){
-        bar.style.width=(25+Math.round(70*(i/placemarks.length)))+'%';
-        progTxt.textContent=`${i+1}/${placemarks.length}장 처리 중...`;
-      }
-
-      // 좌표
+    const kmlFile=zip.file('doc.kml');if(!kmlFile){toast('doc.kml 없음');return;}
+    bar.style.width='25%';txt.textContent='KML 분석 중...';
+    const kml=new DOMParser().parseFromString(await kmlFile.async('string'),'text/xml');
+    const pms=[...kml.querySelectorAll('Placemark')];
+    await loadProjects();
+    const projMap={};projects.forEach(p=>projMap[p.name]=p);
+    let imported=0,skipped=0;
+    for(let i=0;i<pms.length;i++){
+      bar.style.width=(25+Math.round(70*(i/pms.length)))+'%';
+      txt.textContent=`${i+1}/${pms.length}장...`;
+      const pm=pms[i];
       const coordStr=pm.querySelector('Point coordinates')?.textContent?.trim()||'';
       if(!coordStr){skipped++;continue;}
       const [lonS,latS,altS]=coordStr.split(',');
       const lon=parseFloat(lonS),lat=parseFloat(latS),alt=parseFloat(altS)||null;
       if(isNaN(lat)||isNaN(lon)){skipped++;continue;}
-
-      // 시간
       const timeStr=pm.querySelector('TimeStamp when')?.textContent||new Date().toISOString();
-
-      // 이름(프로젝트명)
       const projName=pm.querySelector('name')?.textContent?.trim()||'가져온 사진';
-
-      // description에서 설명 텍스트 추출
       const descHTML=pm.querySelector('description')?.textContent||'';
-      let description='', imgPath='';
-      if(descHTML){
-        const tmp=document.createElement('div');
-        tmp.innerHTML=descHTML;
-        imgPath=tmp.querySelector('img')?.getAttribute('src')||'';
-        const fullText=tmp.textContent||'';
-        const dm=fullText.match(/▸\s*([^\n]+)/);
-        if(dm)description=dm[1].trim();
-      }
-
-      // 사진 blob
-      let blob=null;
-      if(imgPath){
-        const imgFile=zip.file(imgPath);
-        if(imgFile){
-          const buf=await imgFile.async('arraybuffer');
-          blob=new Blob([buf],{type:'image/jpeg'});
-        }
-      }
-      if(!blob){skipped++;continue;}
-
-      // 프로젝트 찾기 or 생성
+      let description='',imgPath='';
+      if(descHTML){const tmp=document.createElement('div');tmp.innerHTML=descHTML;imgPath=tmp.querySelector('img')?.getAttribute('src')||'';const t=tmp.textContent||'';const dm=t.match(/▸\s*([^\n]+)/);if(dm)description=dm[1].trim();}
+      const imgFile=imgPath?zip.file(imgPath):null;
+      if(!imgFile){skipped++;continue;}
+      const photoData=await imgFile.async('arraybuffer');
+      const blob=new Blob([photoData],{type:'image/jpeg'});
       let proj=projMap[projName];
       if(!proj){
-        projects=await dbAll('projects');
         const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
-        const id=await dbAdd('projects',{name:projName,color,createdAt:new Date().toISOString()});
-        proj={id,name:projName,color};
-        projMap[projName]=proj;
-        projects=await dbAll('projects');
+        proj=await createProjectData(projName,color);
+        projMap[projName]=proj;await loadProjects();
       }
-
-      // 중복 체크 (같은 시간 + 같은 좌표면 건너뜀)
-      const dup=photos.find(p=>p.time===timeStr&&p.lat===lat&&p.lon===lon);
-      if(dup){skipped++;continue;}
-
-      await dbAdd('photos',{
-        blob,time:timeStr,
-        lat,lon,alt,acc:null,
-        projectId:proj.id,projectName:proj.name,
-        projectColor:proj.color,description
-      });
+      await savePhotoData(blob,{time:timeStr,lat,lon,alt,acc:null,projectId:proj.id||null,projectName:proj.name,projectColor:proj.color,description});
       imported++;
     }
-
-    if(prog){bar.style.width='100%';progTxt.textContent='완료!';}
-    setTimeout(()=>{if(prog)prog.classList.remove('show');},1500);
-
-    photos=await dbAll('photos');
-    renderExportTab();
-
-    if(imported>0) toast(`✅ ${imported}장 가져옴!${skipped>0?' ('+skipped+'장 건너뜀)':''}`);
-    else toast(`가져온 사진이 없어요 (${skipped}장 건너뜀)`);
-
-  }catch(err){
-    if(prog)prog.classList.remove('show');
-    toast('가져오기 실패: '+err.message);
-    console.error(err);
-  }
+    bar.style.width='100%';txt.textContent='완료!';
+    setTimeout(()=>prog.classList.remove('show'),1500);
+    await loadAllPhotos();
+    toast(imported>0?`✅ ${imported}장 가져옴`:`가져온 사진 없음 (${skipped}건 스킵)`);
+    renderExportInSettings();
+  }catch(err){prog.classList.remove('show');toast('가져오기 실패: '+err.message);}
 }
 
-function saveFile(blob,filename,mimeType){
-  if(window.AndroidBridge){const reader=new FileReader();reader.onload=()=>window.AndroidBridge.saveFile(reader.result,filename,mimeType);reader.readAsDataURL(blob);}
-  else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);}
-}
-
+// ===== 전체 삭제 =====
 async function clearAll(){
-  if(!confirm('모든 데이터를 삭제할까요?'))return;
-  await dbClear('photos');await dbClear('layers');await dbClear('projects');
-  photos=[];layers=[];projects=[];selectedProject=null;selectProject(null);
+  if(!confirm('모든 데이터를 삭제할까요?\n\n⚠️ APK에서는 현장캠 폴더의 모든 파일이 삭제돼요'))return;
+  if(IS_APK){
+    for(const p of projects)AndroidBridge.deleteProject(p.name);
+  }else{
+    await dbClear('photos');await dbClear('layers');await dbClear('projects');
+  }
+  projects=[];allPhotos=[];allLayers=[];selectedProject=null;selectProject(null);
   Object.values(photoLayerGroups).forEach(lg=>map&&map.removeLayer(lg));
   photoLayerGroups={};photoLayerVisible={};
   Object.values(leafletLayers).forEach(l=>map&&map.removeLayer(l));
-  leafletLayers={};toast('전체 삭제됨');updateStats();
+  leafletLayers={};
+  toast('전체 삭제됨');
 }
 
-function dateStr(){const n=new Date();return`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;}
+// ===== 라이트박스 =====
+function openLightbox(url,meta){
+  document.getElementById('lb-img').src=url;
+  document.getElementById('lb-meta').innerHTML=meta.replace(/\n/g,'<br>');
+  document.getElementById('lightbox').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('show');
+  document.body.style.overflow='';
+}
 
+// ===== 유틸 =====
+function dateStr(){const n=new Date();return`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;}
 let toastTimer;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
 
 // ===== 초기화 =====
 async function initApp(){
-  await initDB();
-  photos=await dbAll('photos');projects=await dbAll('projects');layers=await dbAll('layers');
+  if(!IS_APK)await initDB();
+  await loadProjects();
+  await loadAllPhotos();
+  await loadAllLayers();
   startGPS();
+  document.getElementById('hud-time').textContent=fmtNow();
+  if(IS_APK){
+    basePath=AndroidBridge.getBasePath();
+    toast('📁 '+basePath);
+  }
 }
 </script>
 </body>
