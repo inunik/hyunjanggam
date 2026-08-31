@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
     // ── 유틸 ──
     private void ensureDir(File d) { if (!d.exists()) d.mkdirs(); }
 
-    private String readText(File f) throws IOException {
+    private String readFileContent(File f) throws IOException {
         StringBuilder sb = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String line;
@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
         return sb.toString().trim();
     }
 
-    private void writeText(File f, String text) throws IOException {
+    private void writeFileContent(File f, String text) throws IOException {
         try (FileWriter fw = new FileWriter(f)) { fw.write(text); }
     }
 
@@ -171,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                     o.put("name", d.getName());
                     File meta = new File(d, "project.json");
                     if (meta.exists()) {
-                        JSONObject m = new JSONObject(readText(meta));
+                        JSONObject m = new JSONObject(readFileContent(meta));
                         o.put("color", m.optString("color", "#FF6B00"));
                         o.put("createdAt", m.optString("createdAt", ""));
                     } else { o.put("color", "#FF6B00"); }
@@ -196,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject m = new JSONObject();
                 m.put("color", color);
                 m.put("createdAt", new java.util.Date().toInstant().toString());
-                writeText(new File(pd, "project.json"), m.toString());
+                writeFileContent(new File(pd, "project.json"), m.toString());
             } catch (Exception e) { uiToast("프로젝트 생성 실패: " + e.getMessage()); }
         }
 
@@ -209,9 +209,9 @@ public class MainActivity extends AppCompatActivity {
         public void updateProjectColor(String name, String color) {
             try {
                 File meta = new File(new File(baseDir, name), "project.json");
-                JSONObject m = meta.exists() ? new JSONObject(readText(meta)) : new JSONObject();
+                JSONObject m = meta.exists() ? new JSONObject(readFileContent(meta)) : new JSONObject();
                 m.put("color", color);
-                writeText(meta, m.toString());
+                writeFileContent(meta, m.toString());
             } catch (Exception e) {}
         }
 
@@ -224,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
                 File photoDir = new File(new File(baseDir, projectName), "사진");
                 ensureDir(photoDir);
                 try (FileOutputStream fo = new FileOutputStream(new File(photoDir, filename))) { fo.write(data); }
-                writeText(new File(photoDir, filename.replace(".jpg", ".json")), metaJson);
+                writeFileContent(new File(photoDir, filename.replace(".jpg", ".json")), metaJson);
                 runOnUiThread(() -> Toast.makeText(MainActivity.this, "📸 저장됨", Toast.LENGTH_SHORT).show());
             } catch (Exception e) { uiToast("저장 실패: " + e.getMessage()); }
         }
@@ -245,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
                     o.put("project", projectName);
                     File mf = new File(pd, f.getName().replace(".jpg", ".json"));
                     if (mf.exists()) {
-                        JSONObject m = new JSONObject(readText(mf));
+                        JSONObject m = new JSONObject(readFileContent(mf));
                         o.put("lat",  m.optDouble("lat", 0));
                         o.put("lon",  m.optDouble("lon", 0));
                         o.put("alt",  m.optDouble("alt", 0));
@@ -274,8 +274,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 File ld = new File(new File(baseDir, projectName), "레이어");
                 ensureDir(ld);
-                writeText(new File(ld, name + ".geojson"), geojson);
-                writeText(new File(ld, name + ".meta.json"), metaJson);
+                writeFileContent(new File(ld, name + ".geojson"), geojson);
+                writeFileContent(new File(ld, name + ".meta.json"), metaJson);
             } catch (Exception e) { uiToast("레이어 저장 실패: " + e.getMessage()); }
         }
 
@@ -296,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
                     o.put("geojsonPath", f.getAbsolutePath());
                     File mf = new File(ld, baseName + ".meta.json");
                     if (mf.exists()) {
-                        JSONObject m = new JSONObject(readText(mf));
+                        JSONObject m = new JSONObject(readFileContent(mf));
                         o.put("color",   m.optString("color",   "#4CAF50"));
                         o.put("visible", m.optBoolean("visible", true));
                     } else { o.put("color", "#4CAF50"); o.put("visible", true); }
@@ -308,14 +308,14 @@ public class MainActivity extends AppCompatActivity {
 
         @JavascriptInterface
         public String readText(String path) {
-            try { return readText(new File(path)); } catch (Exception e) { return ""; }
+            try { return readFileContent(new File(path)); } catch (Exception e) { return ""; }
         }
 
         @JavascriptInterface
         public void updateLayerMeta(String geojsonPath, String metaJson) {
             try {
                 File mf = new File(geojsonPath.replace(".geojson", ".meta.json"));
-                writeText(mf, metaJson);
+                writeFileContent(mf, metaJson);
             } catch (Exception e) {}
         }
 
