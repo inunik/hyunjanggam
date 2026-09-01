@@ -552,9 +552,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
 
     <input type="file" id="file-inp"
-      accept=".shp,.shx,.dbf,.prj,.cpg,.kml,.kmz,.zip,.geojson,.json"
+      accept="*/*"
       multiple style="display:none" onchange="onFileSelected(event)">
-    <input type="file" id="kmz-import-inp" accept=".kmz" style="display:none" onchange="onImportKMZ(event)">
+    <input type="file" id="kmz-import-inp" accept="*/*" style="display:none" onchange="onImportKMZ(event)">
     <div id="layer-drag-ghost" class="layer-drag-ghost"></div>
   </div>
 
