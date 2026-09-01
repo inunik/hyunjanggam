@@ -205,10 +205,24 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   color:var(--dim);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ord-btn:disabled{opacity:.25;cursor:default}
 .layer-proj-hdr{display:flex;align-items:center;justify-content:space-between;
-  padding:8px 0 4px;margin-top:6px;border-top:1px solid var(--border)}
+  padding:8px 0 4px;margin-top:8px;border-top:1px solid var(--border)}
 .layer-proj-hdr:first-child{border-top:none;margin-top:0}
 .layer-proj-name{font-size:12px;font-weight:700;color:var(--text)}
 .layer-proj-toggle{font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600}
+
+/* 레이어 확장 패널 (색상+아이콘) */
+.layer-expand{background:var(--bg);border-radius:8px;padding:8px 10px;margin:2px 0 6px;display:none}
+.layer-expand.show{display:block}
+.expand-label{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.color-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.color-chip{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer;transition:transform .1s}
+.color-chip.on{border-color:#fff;transform:scale(1.2)}
+.color-chip:active{transform:scale(0.9)}
+.symbol-grid{display:flex;flex-wrap:wrap;gap:5px}
+.symbol-btn{width:32px;height:32px;border-radius:7px;border:2px solid transparent;
+  background:var(--surf2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
+.symbol-btn.on{border-color:var(--accent);background:var(--accent-dim)}
+.symbol-btn:active{opacity:.7}
 
 /* ── 내보내기 카드 ── */
 .exp-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
@@ -596,6 +610,30 @@ const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','
 const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4'];
 let layerColorIdx=0;
 
+// 레이어 색상 팔레트
+const COLOR_PALETTE=['#FF4444','#FF6B00','#FFA500','#FFDD00','#00CC44','#00BCD4',
+  '#2196F3','#9C27B0','#E91E63','#795548','#607D8B','#000000'];
+
+// 레이어 심볼
+const SYMBOLS={
+  circle: c=>`<circle cx="14" cy="14" r="11" fill="${c}" stroke="white" stroke-width="2"/>`,
+  dot:    c=>`<circle cx="14" cy="14" r="5" fill="${c}"/>`,
+  square: c=>`<rect x="3" y="3" width="22" height="22" rx="3" fill="${c}" stroke="white" stroke-width="2"/>`,
+  triangle:c=>`<polygon points="14,3 25,25 3,25" fill="${c}" stroke="white" stroke-width="1.5"/>`,
+  cross:  c=>`<line x1="4" y1="4" x2="24" y2="24" stroke="${c}" stroke-width="4" stroke-linecap="round"/><line x1="24" y1="4" x2="4" y2="24" stroke="${c}" stroke-width="4" stroke-linecap="round"/>`,
+  star:   c=>`<polygon points="14,2 17,10 26,10 19,16 22,24 14,18 6,24 9,16 2,10 11,10" fill="${c}" stroke="white" stroke-width="1"/>`,
+  heart:  c=>`<path d="M14 24s-11-7-11-14a7 7 0 0 1 14 0 7 7 0 0 1 14 0c0 7-11 14-11 14l-3 0z" fill="${c}" stroke="white" stroke-width="1"/>`,
+  moon:   c=>`<path d="M20 14a8 8 0 1 1-8-8 6 6 0 0 0 8 8z" fill="${c}"/>`
+};
+const SYMBOL_LABELS={circle:'●',dot:'•',square:'■',triangle:'▲',cross:'✕',star:'★',heart:'♥',moon:'☽'};
+
+function makeSymbolHtml(color,symbol,size=28){
+  const fn=SYMBOLS[symbol]||SYMBOLS.circle;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">${fn(color)}</svg>`;
+}
+
+let expandedLayers=new Set(); // 펼쳐진 레이어 key 목록
+
 // ===== 상태 =====
 let projects=[], allPhotos=[], allLayers=[];
 let selectedProject=null;
@@ -723,27 +761,31 @@ async function loadAllLayers(){
   }else{
     allLayers=await dbAll('layers');
   }
+  // order 필드로 정렬 유지
+  allLayers.sort((a,b)=>(a.order??999)-(b.order??999));
   return allLayers;
 }
 
-async function saveLayerData(projectName,name,geojson,color,visible){
-  const meta={color,visible,project:projectName};
+async function saveLayerData(projectName,name,geojson,color,visible,symbol='circle'){
+  const order=allLayers.length;
+  const meta={color,visible,project:projectName,symbol,order};
   if(IS_APK){
     AndroidBridge.saveLayer(projectName,name,JSON.stringify(geojson),JSON.stringify(meta));
   }else{
-    await dbAdd('layers',{name,project:projectName,color,geojson,visible});
+    await dbAdd('layers',{name,project:projectName,color,geojson,visible,symbol,order});
   }
   await loadAllLayers();
 }
 
 async function toggleLayerData(layer){
   const newVisible=!layer.visible;
+  layer.visible=newVisible;
   if(IS_APK){
-    AndroidBridge.updateLayerMeta(layer.geojsonPath,JSON.stringify({color:layer.color,visible:newVisible,project:layer.projectName}));
+    AndroidBridge.updateLayerMeta(layer.geojsonPath,
+      JSON.stringify({color:layer.color,visible:newVisible,project:layer.projectName,symbol:layer.symbol||'circle',order:layer.order||0}));
   }else{
     await dbPut('layers',{...layer,visible:newVisible});
   }
-  await loadAllLayers();
   return newVisible;
 }
 
@@ -1150,9 +1192,15 @@ function addLeafletLayer(l){
     try{geojson=JSON.parse(AndroidBridge.readText(l.geojsonPath));}catch(e){}
   }
   if(!geojson)return;
+  const sym=l.symbol||'circle';
   const lf=L.geoJSON(geojson,{
     style:{color:l.color,weight:2.5,fillOpacity:.15},
-    pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:6,color:l.color,fillColor:l.color,fillOpacity:.9}),
+    pointToLayer:(f,ll)=>{
+      const icon=L.divIcon({className:'',
+        html:makeSymbolHtml(l.color,sym,28),
+        iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
+      return L.marker(ll,{icon});
+    },
     onEachFeature:(f,lf2)=>{
       const p=f.properties||{};
       lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.projectName||l.project||''}</div>`);
@@ -1162,19 +1210,57 @@ function addLeafletLayer(l){
   if(l.visible)lf.addTo(map);
 }
 
-async function toggleLayer(layerKey){
-  const l=allLayers.find(x=>(x.geojsonPath||x.id)===layerKey);if(!l)return;
+async function toggleLayer(idx){
+  const l=allLayers[idx];if(!l)return;
   const newVis=await toggleLayerData(l);
-  const lf=leafletLayers[layerKey];
+  const key=l.geojsonPath||l.id;
+  const lf=leafletLayers[key];
   if(lf){newVis?lf.addTo(map):map.removeLayer(lf);}
   renderSettingsLayerList();
 }
 
-async function deleteLayer(layerKey){
-  const l=allLayers.find(x=>(x.geojsonPath||x.id)===layerKey);if(!l)return;
-  if(leafletLayers[layerKey]){map.removeLayer(leafletLayers[layerKey]);delete leafletLayers[layerKey];}
+async function deleteLayer(idx){
+  const l=allLayers[idx];if(!l)return;
+  const key=l.geojsonPath||l.id;
+  if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
   await deleteLayerData(l);
   renderSettingsLayerList();toast('레이어 삭제됨');
+}
+
+// 레이어 색상 변경
+async function setLayerColor(idx,color){
+  const l=allLayers[idx];if(!l)return;
+  l.color=color;
+  if(IS_APK&&l.geojsonPath)
+    AndroidBridge.updateLayerMeta(l.geojsonPath,JSON.stringify({color,visible:l.visible,project:l.projectName,symbol:l.symbol||'circle',order:l.order||0}));
+  else if(!IS_APK) await dbPut('layers',{...l,color});
+  // 지도 레이어 다시 그리기
+  addLeafletLayer(l);
+  renderSettingsLayerList();
+}
+
+// 레이어 심볼 변경
+async function setLayerSymbol(idx,symbol){
+  const l=allLayers[idx];if(!l)return;
+  l.symbol=symbol;
+  if(IS_APK&&l.geojsonPath)
+    AndroidBridge.updateLayerMeta(l.geojsonPath,JSON.stringify({color:l.color,visible:l.visible,project:l.projectName,symbol,order:l.order||0}));
+  else if(!IS_APK) await dbPut('layers',{...l,symbol});
+  addLeafletLayer(l);
+  renderSettingsLayerList();
+}
+
+// 레이어 지도 확대
+function zoomToLayer(idx){
+  const l=allLayers[idx];if(!l||!map)return;
+  const key=l.geojsonPath||l.id;
+  const lf=leafletLayers[key];
+  if(!lf)return;
+  try{
+    const b=lf.getBounds();
+    if(b.isValid())map.fitBounds(b,{padding:[40,40]});
+    closeSettings();
+  }catch(e){}
 }
 
 // ===== 설정 패널 =====
@@ -1222,93 +1308,115 @@ function renderSettingsLayerList(){
   const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
   let html='';
 
-  // ── 📸 사진 (프로젝트별 토글) ──
-  if(gpsPhotos.length>0){
-    const groups={};
-    gpsPhotos.forEach(p=>{
-      const key=p.projectName||'none';
-      if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',cnt:0};
-      groups[key].cnt++;
-    });
-    const allOn=Object.keys(groups).every(k=>photoLayerVisible[k]!==false);
-    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <span style="font-size:11px;color:var(--dim);font-weight:700">📸 사진</span>
-      <button class="layer-proj-toggle" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+  // 프로젝트 목록 수집 (사진 + 레이어 통합)
+  const projSet=new Set();
+  gpsPhotos.forEach(p=>projSet.add(p.projectName||'미분류'));
+  allLayers.forEach(l=>projSet.add(l.projectName||l.project||'미분류'));
+
+  // projects DB 순서대로 정렬
+  const projOrder=[...projects.map(p=>p.name),'미분류'];
+  const sortedProjs=[...projSet].sort((a,b)=>{
+    const ai=projOrder.indexOf(a),bi=projOrder.indexOf(b);
+    return (ai<0?999:ai)-(bi<0?999:bi);
+  });
+
+  sortedProjs.forEach(proj=>{
+    // 이 프로젝트의 사진
+    const projPhotos=gpsPhotos.filter(p=>(p.projectName||'미분류')===proj);
+    const photoKey=proj==='미분류'?'none':proj;
+    const photoOn=photoLayerVisible[photoKey]!==false;
+
+    // 이 프로젝트의 레이어
+    const projLayers=allLayers.map((l,idx)=>({l,idx}))
+      .filter(({l})=>(l.projectName||l.project||'미분류')===proj);
+
+    if(!projPhotos.length&&!projLayers.length)return;
+
+    // 프로젝트 전체 상태
+    const allOn=(projPhotos.length===0||photoOn)&&projLayers.every(({l})=>l.visible);
+    const projColor=projects.find(p=>p.name===proj)?.color||'#888';
+
+    html+=`<div class="layer-proj-hdr">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="layer-color" style="background:${projColor};width:10px;height:10px;border-radius:2px"></div>
+        <span class="layer-proj-name">${proj}</span>
+      </div>
+      <button class="layer-proj-toggle" onclick="toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
     </div>`;
-    Object.entries(groups).forEach(([key,g])=>{
-      const on=photoLayerVisible[key]!==false;
-      html+=`<div class="layer-item">
-        <div class="layer-color" style="background:${g.color}"></div>
-        <div class="layer-info"><div class="layer-name">${g.name}</div><div class="layer-sub">📷 ${g.cnt}장</div></div>
-        <button class="toggle-btn ${on?'on':'off'}" onclick="togglePhotoLayer('${key}')"></button>
+
+    // 사진 행
+    if(projPhotos.length>0){
+      html+=`<div class="layer-item" style="padding-left:8px">
+        <div style="font-size:16px;flex-shrink:0">📸</div>
+        <div class="layer-info"><div class="layer-name">사진</div><div class="layer-sub">${projPhotos.length}장</div></div>
+        <button class="toggle-btn ${photoOn?'on':'off'}" onclick="togglePhotoLayer('${photoKey}')"></button>
+      </div>`;
+    }
+
+    // 레이어 행 (개별)
+    projLayers.forEach(({l,idx})=>{
+      const eKey='lx'+idx;
+      const isExp=expandedLayers.has(eKey);
+      const sym=l.symbol||'circle';
+      html+=`<div class="layer-item" style="padding-left:8px;cursor:pointer" onclick="toggleLayerExpand('${eKey}')">
+        <div style="flex-shrink:0">${makeSymbolHtml(l.color,sym,20)}</div>
+        <div class="layer-info"><div class="layer-name">${l.name}</div></div>
+        <button class="ord-btn" ${idx===0?'disabled':''} onclick="event.stopPropagation();moveLayer(${idx},-1)">▲</button>
+        <button class="ord-btn" ${idx===allLayers.length-1?'disabled':''} onclick="event.stopPropagation();moveLayer(${idx},1)">▼</button>
+        <button class="mfab" style="width:28px;height:28px;border-radius:7px;font-size:13px" onclick="event.stopPropagation();zoomToLayer(${idx})">🔍</button>
+        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="event.stopPropagation();toggleLayer(${idx})"></button>
+        <button class="del-btn" onclick="event.stopPropagation();deleteLayer(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+      <div class="layer-expand ${isExp?'show':''}" id="${eKey}">
+        <div class="expand-label">색상</div>
+        <div class="color-grid">${COLOR_PALETTE.map(c=>`<div class="color-chip ${l.color===c?'on':''}" style="background:${c}" onclick="setLayerColor(${idx},'${c}')"></div>`).join('')}</div>
+        <div class="expand-label" style="margin-top:8px">아이콘</div>
+        <div class="symbol-grid">${Object.entries(SYMBOL_LABELS).map(([s,lb])=>`<button class="symbol-btn ${sym===s?'on':''}" onclick="setLayerSymbol(${idx},'${s}')" title="${s}">${makeSymbolHtml(l.color,s,18)}</button>`).join('')}</div>
       </div>`;
     });
-  }
+  });
 
-  // ── 🗺️ 지도 레이어 (프로젝트별 그룹 + 순서 이동) ──
-  if(allLayers.length>0){
-    html+=`<div style="font-size:11px;color:var(--dim);font-weight:700;margin:10px 0 4px">🗺️ 지도 레이어</div>`;
-
-    // 프로젝트별 그룹핑
-    const projGroups={};
-    allLayers.forEach((l,idx)=>{
-      const proj=l.projectName||l.project||'미분류';
-      if(!projGroups[proj])projGroups[proj]=[];
-      projGroups[proj].push({l,idx});
-    });
-
-    Object.entries(projGroups).forEach(([proj,items])=>{
-      const allOn2=items.every(x=>x.l.visible);
-      html+=`<div class="layer-proj-hdr">
-        <span class="layer-proj-name">📁 ${proj}</span>
-        <button class="layer-proj-toggle" onclick="toggleProjectLayers('${encodeURIComponent(proj)}',${!allOn2})">${allOn2?'전체 끄기':'전체 켜기'}</button>
-      </div>`;
-      items.forEach(({l,idx})=>{
-        const key=encodeURIComponent(l.geojsonPath||String(l.id));
-        html+=`<div class="layer-item" style="padding-left:8px">
-          <div class="layer-color" style="background:${l.color}"></div>
-          <div class="layer-info"><div class="layer-name">${l.name}</div></div>
-          <button class="ord-btn" ${idx===0?'disabled':''} onclick="moveLayer(${idx},-1)">▲</button>
-          <button class="ord-btn" ${idx===allLayers.length-1?'disabled':''} onclick="moveLayer(${idx},1)">▼</button>
-          <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer('${key}')"></button>
-          <button class="del-btn" onclick="deleteLayer('${key}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-            </svg>
-          </button>
-        </div>`;
-      });
-    });
-  }
-
-  if(!gpsPhotos.length&&!allLayers.length){
+  if(!gpsPhotos.length&&!allLayers.length)
     html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
-  }
   el.innerHTML=html;
+}
+
+function toggleLayerExpand(eKey){
+  if(expandedLayers.has(eKey))expandedLayers.delete(eKey);
+  else expandedLayers.add(eKey);
+  renderSettingsLayerList();
+}
+
+// 프로젝트 사진 + 레이어 전체 토글
+async function toggleProjectAll(projEncoded,visible){
+  const proj=decodeURIComponent(projEncoded);
+  const photoKey=proj==='미분류'?'none':proj;
+  // 사진 토글
+  photoLayerVisible[photoKey]=visible;
+  const lg=photoLayerGroups[photoKey];
+  if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
+  // 레이어 토글
+  await toggleProjectLayers(projEncoded,visible);
 }
 
 // ===== 레이어 순서 이동 =====
 async function moveLayer(idx,dir){
   const newIdx=idx+dir;
   if(newIdx<0||newIdx>=allLayers.length)return;
-
-  // 배열에서 swap
   const tmp=allLayers[idx];
   allLayers[idx]=allLayers[newIdx];
   allLayers[newIdx]=tmp;
-
-  // 저장소 업데이트 (order 필드)
+  allLayers[idx].order=idx;
+  allLayers[newIdx].order=newIdx;
   if(IS_APK){
     const la=allLayers[idx],lb=allLayers[newIdx];
     if(la.geojsonPath)AndroidBridge.updateLayerMeta(la.geojsonPath,
-      JSON.stringify({color:la.color,visible:la.visible,project:la.projectName||la.project||'',order:idx}));
+      JSON.stringify({color:la.color,visible:la.visible,project:la.projectName||la.project||'',symbol:la.symbol||'circle',order:idx}));
     if(lb.geojsonPath)AndroidBridge.updateLayerMeta(lb.geojsonPath,
-      JSON.stringify({color:lb.color,visible:lb.visible,project:lb.projectName||lb.project||'',order:newIdx}));
+      JSON.stringify({color:lb.color,visible:lb.visible,project:lb.projectName||lb.project||'',symbol:lb.symbol||'circle',order:newIdx}));
   }else{
     await dbPut('layers',{...allLayers[idx],order:idx});
     await dbPut('layers',{...allLayers[newIdx],order:newIdx});
   }
-
   reapplyLayerOrder();
   renderSettingsLayerList();
 }
@@ -1334,7 +1442,7 @@ async function toggleProjectLayers(projEncoded,visible){
     l.visible=visible;
     if(IS_APK&&l.geojsonPath){
       AndroidBridge.updateLayerMeta(l.geojsonPath,
-        JSON.stringify({color:l.color,visible,project:l.projectName||l.project||''}));
+        JSON.stringify({color:l.color,visible,project:l.projectName||l.project||'',symbol:l.symbol||'circle',order:l.order||0}));
     }else if(!IS_APK){
       await dbPut('layers',{...l,visible});
     }
