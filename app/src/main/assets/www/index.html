@@ -761,9 +761,33 @@ async function loadAllLayers(){
   }else{
     allLayers=await dbAll('layers');
   }
-  // order 필드로 정렬 유지
-  allLayers.sort((a,b)=>(a.order??999)-(b.order??999));
+  // localStorage에 저장된 순서 적용 (가장 신뢰할 수 있는 순서)
+  applyStoredLayerOrder();
   return allLayers;
+}
+
+// localStorage 기반 순서 저장/복원
+function saveLayerOrder(){
+  const orderMap={};
+  allLayers.forEach((l,idx)=>{
+    const k=l.geojsonPath||String(l.id||l.name);
+    orderMap[k]=idx;
+  });
+  localStorage.setItem('layerOrder',JSON.stringify(orderMap));
+}
+
+function applyStoredLayerOrder(){
+  try{
+    const orderMap=JSON.parse(localStorage.getItem('layerOrder')||'{}');
+    allLayers.sort((a,b)=>{
+      const ak=a.geojsonPath||String(a.id||a.name);
+      const bk=b.geojsonPath||String(b.id||b.name);
+      return (orderMap[ak]??999)-(orderMap[bk]??999);
+    });
+  }catch(e){
+    // fallback: order 필드로 정렬
+    allLayers.sort((a,b)=>(a.order??999)-(b.order??999));
+  }
 }
 
 async function saveLayerData(projectName,name,geojson,color,visible,symbol='circle'){
@@ -1417,6 +1441,7 @@ async function moveLayer(idx,dir){
     await dbPut('layers',{...allLayers[idx],order:idx});
     await dbPut('layers',{...allLayers[newIdx],order:newIdx});
   }
+  saveLayerOrder(); // localStorage에 순서 저장
   reapplyLayerOrder();
   renderSettingsLayerList();
 }
@@ -1515,14 +1540,32 @@ async function scanProjectLayers(projName){
           if(files.prj)obj.prj=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj));
           geojson=await shp(obj);
         }else if(files.kmz){
-          // KMZ 처리
+          // KMZ 처리 (멀티레이어)
           const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.kmz));
           const zip=await JSZip.loadAsync(buf);
           const kf=zip.file('doc.kml')||Object.values(zip.files).find(x=>x.name.endsWith('.kml'));
-          if(kf)geojson=kmlToGeoJSON(new DOMParser().parseFromString(await kf.async('string'),'text/xml'));
+          if(kf){
+            const kmlDom=new DOMParser().parseFromString(await kf.async('string'),'text/xml');
+            const mls=kmlToMultiGeoJSON(kmlDom,name);
+            if(mls.length>1){
+              for(const ml of mls){if(!ml.geojson.features.length)continue;
+                const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+                await saveLayerData(projName,ml.name,ml.geojson,color,true);added++;}
+              continue;
+            }
+            geojson=mls[0]?.geojson;
+          }
         }else if(files.kml){
-          // KML 처리
-          geojson=kmlToGeoJSON(new DOMParser().parseFromString(AndroidBridge.readText(files.kml),'text/xml'));
+          // KML 처리 (멀티레이어)
+          const kmlDom=new DOMParser().parseFromString(AndroidBridge.readText(files.kml),'text/xml');
+          const mls=kmlToMultiGeoJSON(kmlDom,name);
+          if(mls.length>1){
+            for(const ml of mls){if(!ml.geojson.features.length)continue;
+              const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+              await saveLayerData(projName,ml.name,ml.geojson,color,true);added++;}
+            continue;
+          }
+          geojson=mls[0]?.geojson;
         }else if(files.geojson||files.json){
           // GeoJSON 처리
           geojson=JSON.parse(AndroidBridge.readText(files.geojson||files.json));
@@ -1601,7 +1644,7 @@ async function confirmLayerNewProj(){
 async function loadLayerFile(file,projectName){
   toast('파일 불러오는 중...');
   try{
-    let geojson,displayName;
+    let geojson,displayName,multiLayers=null;
     if(file._shpMulti){
       displayName=file.name;
       const shpObj={shp:file.shpBuf};
@@ -1613,16 +1656,41 @@ async function loadLayerFile(file,projectName){
       const zip=await JSZip.loadAsync(await file.arrayBuffer());
       const kmlF=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
       if(!kmlF){toast('KMZ 안에 KML이 없어요');return;}
-      geojson=kmlToGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'));
-    }else if(file.name.endsWith('.zip')){displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());}
-    else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());}
-    else if(file.name.endsWith('.kml')){displayName=file.name.replace(/\.kml$/i,'');geojson=kmlToGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'));}
-    else{toast('지원하지 않는 파일 형식');return;}
+      multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'),displayName);
+    }else if(file.name.endsWith('.zip')){
+      displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());
+    }else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){
+      displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());
+    }else if(file.name.endsWith('.kml')){
+      displayName=file.name.replace(/\.kml$/i,'');
+      multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'),displayName);
+    }else{toast('지원하지 않는 파일 형식');return;}
+
+    // 멀티레이어 처리 (KML/KMZ 폴더별)
+    if(multiLayers&&multiLayers.length>0){
+      let added=0;
+      for(const ml of multiLayers){
+        if(!ml.geojson.features?.length)continue;
+        const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+        await saveLayerData(projectName,ml.name,ml.geojson,color,true);
+        const nl=allLayers[allLayers.length-1];
+        if(nl)addLeafletLayer(nl);
+        added++;
+      }
+      saveLayerOrder();
+      renderSettingsLayerList();
+      const msg=added>1?`✅ ${added}개 레이어 추가됨 (${displayName})`:'✅ '+(multiLayers[0]?.name||displayName)+' 추가됨';
+      toast(msg);
+      return;
+    }
+
+    // 단일 레이어 처리
     const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
     const name=displayName||file.name.replace(/\.[^.]+$/,'');
     await saveLayerData(projectName,name,geojson,color,true);
     const newLayer=allLayers[allLayers.length-1];
     if(newLayer)addLeafletLayer(newLayer);
+    saveLayerOrder();
     try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
     renderSettingsLayerList();toast('✅ '+name+' 추가됨');
   }catch(err){toast('파일 읽기 실패: '+err.message);console.error(err);}
@@ -1678,16 +1746,61 @@ async function loadFromURL(){
   }catch(err){toast('URL 불러오기 실패: '+err.message);console.error(err);}
 }
 
-function kmlToGeoJSON(kml){
+function parsePlacemarks(pms){
   const features=[];
-  kml.querySelectorAll('Placemark').forEach(pm=>{
+  pms.forEach(pm=>{
     const name=pm.querySelector('name')?.textContent||'';
     const raw=pm.querySelector('coordinates')?.textContent?.trim();if(!raw)return;
     const pts=raw.split(/\s+/).map(c=>{const a=c.split(',');return[parseFloat(a[0]),parseFloat(a[1])];}).filter(p=>!isNaN(p[0]));
     if(!pts.length)return;
     features.push({type:'Feature',geometry:pts.length===1?{type:'Point',coordinates:pts[0]}:{type:'LineString',coordinates:pts},properties:{name}});
   });
-  return{type:'FeatureCollection',features};
+  return features;
+}
+
+// KML → 단일 GeoJSON (기존 호환용)
+function kmlToGeoJSON(kml){
+  return{type:'FeatureCollection',features:parsePlacemarks(kml.querySelectorAll('Placemark'))};
+}
+
+// KML → 폴더별 멀티 레이어 [{name, geojson}]
+function kmlToMultiGeoJSON(kml,baseName){
+  const layers=[];
+  const folders=kml.querySelectorAll('Document > Folder, Folder');
+
+  if(folders.length>0){
+    folders.forEach(folder=>{
+      const name=folder.querySelector(':scope > name')?.textContent||baseName;
+      // 이 폴더 직계 Placemark만
+      const pms=[...folder.querySelectorAll(':scope > Placemark')];
+      // 하위 폴더도 재귀
+      const subFolders=folder.querySelectorAll(':scope > Folder');
+      if(subFolders.length>0){
+        subFolders.forEach(sf=>{
+          const sfName=sf.querySelector(':scope > name')?.textContent||name;
+          const sfFeatures=parsePlacemarks(sf.querySelectorAll('Placemark'));
+          if(sfFeatures.length>0)layers.push({name:sfName,geojson:{type:'FeatureCollection',features:sfFeatures}});
+        });
+      }
+      if(pms.length>0){
+        layers.push({name,geojson:{type:'FeatureCollection',features:parsePlacemarks(pms)}});
+      }
+    });
+  }
+
+  // Document 직계 Placemark (폴더 밖)
+  const directPms=[...kml.querySelectorAll('Document > Placemark')];
+  if(directPms.length>0){
+    const docName=kml.querySelector('Document > name')?.textContent||baseName;
+    layers.push({name:docName,geojson:{type:'FeatureCollection',features:parsePlacemarks(directPms)}});
+  }
+
+  // 아무것도 없으면 전체 파싱
+  if(layers.length===0){
+    layers.push({name:baseName,geojson:kmlToGeoJSON(kml)});
+  }
+
+  return layers;
 }
 
 // ===== 내보내기 (설정 내) =====
