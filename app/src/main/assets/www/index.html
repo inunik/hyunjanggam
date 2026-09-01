@@ -278,6 +278,20 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;
   font-size:13px;font-weight:500;white-space:nowrap;opacity:0;transition:all .2s;z-index:9999;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* 파일 읽기 실패 상세 오류 다이얼로그 (토스트는 3초 후 사라져 원인을 놓치는 문제 방지) */
+.err-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:none;align-items:center;justify-content:center;padding:24px}
+.err-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;max-width:420px;width:100%;max-height:70vh;display:flex;flex-direction:column}
+.err-title{font-size:15px;font-weight:700;margin-bottom:8px}
+.err-msg{font-size:12px;font-family:'Courier New',monospace;color:var(--text);background:var(--surf2);
+  border:1px solid var(--border);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-all;
+  overflow:auto;flex:1;min-height:60px}
+.err-btns{display:flex;gap:8px;margin-top:14px}
+.err-btn{flex:1;border:none;border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer}
+.err-btn.copy{background:var(--surf2);color:var(--text);border:1px solid var(--border)}
+.err-btn.ok{background:var(--accent);color:#fff}
+/* 블랙리스트 관리 */
+.bl-restore-btn{flex-shrink:0;background:rgba(76,175,80,.12);border:1px solid rgba(76,175,80,.4);color:var(--gps);
+  border-radius:7px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
 
 @keyframes pulse{
   0%{box-shadow:0 0 0 4px rgba(33,150,243,0.25),0 2px 8px rgba(0,0,0,0.3)}
@@ -369,6 +383,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
         <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
       </div>
+      <button class="add-btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)"
+        onclick="openBlacklistManager()">
+        🚫 삭제한 파일 목록 (블랙리스트) <span id="bl-count"></span>
+      </button>
     </div>
 
     <div class="set-section">내보내기 / 가져오기</div>
@@ -591,6 +609,18 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <button class="lightbox-close" onclick="closeLightbox()">✕</button>
 </div>
 
+<!-- 파일 읽기 실패 상세 오류 다이얼로그 -->
+<div class="err-overlay" id="err-overlay">
+  <div class="err-card">
+    <div class="err-title">⚠️ 파일을 읽지 못했어요</div>
+    <div class="err-msg" id="err-msg"></div>
+    <div class="err-btns">
+      <button class="err-btn copy" onclick="copyErrDetail()">복사</button>
+      <button class="err-btn ok" onclick="closeErrDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -609,11 +639,19 @@ async function loadLibs(){
   await loadScript('shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
   await loadScript('proj4.js','https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js');
   if(typeof proj4!=='undefined'){
-    proj4.defs('EPSG:5174','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs');
-    proj4.defs('EPSG:5179','+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9999 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs');
-    proj4.defs('EPSG:5186','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs');
-    proj4.defs('EPSG:5181','+proj=tmerc +lat_0=38 +lon_0=129 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs');
-    proj4.defs('EPSG:5185','+proj=tmerc +lat_0=38 +lon_0=125 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs');
+    // 한국 좌표계 정의 (EPSG 공식값 준수 — epsg.io 기준 2026-09 확인)
+    // Bessel(Korean 1985) 변환파라미터: TOWGS84[-145.907,505.034,685.756,-1.162,2.347,1.592,6.342]
+    proj4.defs('EPSG:5173','+proj=tmerc +lat_0=38 +lon_0=125.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 서부원점
+    proj4.defs('EPSG:5174','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 중부원점
+    proj4.defs('EPSG:5175','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=550000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 중부원점(제주)
+    proj4.defs('EPSG:5176','+proj=tmerc +lat_0=38 +lon_0=129.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 동부원점
+    proj4.defs('EPSG:5177','+proj=tmerc +lat_0=38 +lon_0=131.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 동해원점(울릉도)
+    proj4.defs('EPSG:5179','+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs'); // UTM-K 통합원점 (공식: k=0.9996, 편차 1M/2M)
+    proj4.defs('EPSG:5181','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 중부원점
+    proj4.defs('EPSG:5185','+proj=tmerc +lat_0=38 +lon_0=125 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 서부원점(2010)
+    proj4.defs('EPSG:5186','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 중부원점(2010)
+    proj4.defs('EPSG:5187','+proj=tmerc +lat_0=38 +lon_0=129 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 동부원점(2010)
+    proj4.defs('EPSG:5188','+proj=tmerc +lat_0=38 +lon_0=131 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 동해원점(2010)
   }
   // 라이브러리 로드 완료 후 앱 초기화
   if(typeof initApp === 'function') initApp();
@@ -1083,7 +1121,8 @@ function initMap(){
   try{
     if(map){refreshMarkers();renderSettingsLayerList();return;}
     if(typeof L === 'undefined'){toast('지도 라이브러리 로드 중... 잠시 후 다시 탭해주세요');return;}
-    map=L.map('map',{zoomControl:false}).setView([36.5,127.8],7);
+    // preferCanvas: 수만 개 폴리곤/라인(지적도·관로망)도 SVG DOM 대신 canvas로 그려 WebView 멈춤 방지
+    map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([36.5,127.8],7);
   const savedType=localStorage.getItem('map_type')||'vworld';
   const savedKey=localStorage.getItem('vworld_key')||'';
   baseTileLayer=makeTileLayer(savedType,savedKey);
@@ -1258,19 +1297,29 @@ function addLeafletLayer(l){
 }
 
 // ===== 스캔 블랙리스트 (삭제한 레이어 재등록 방지) =====
+// 비교 전 trim + NFC 정규화: 공백/유니코드 형식(NFD) 차이로 같은 이름이 다르게 보이는 문제 방지
+function blNorm(s){return String(s||'').trim().normalize('NFC');}
 function addScanBlacklist(projName,layerName){
   const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
-  if(!bl[projName])bl[projName]=[];
-  if(!bl[projName].includes(layerName))bl[projName].push(layerName);
+  const pj=blNorm(projName);
+  const nm=blNorm(layerName);
+  if(!bl[pj])bl[pj]=[];
+  if(!bl[pj].some(n=>blNorm(n)===nm))bl[pj].push(nm);
   localStorage.setItem('scanBL',JSON.stringify(bl));
 }
 function isScanBlacklisted(projName,layerName){
   const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
-  return (bl[projName]||[]).includes(layerName);
+  const nm=blNorm(layerName);
+  return (bl[blNorm(projName)]||[]).some(n=>blNorm(n)===nm);
 }
 function removeScanBlacklist(projName,layerName){
   const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
-  if(bl[projName])bl[projName]=bl[projName].filter(n=>n!==layerName);
+  const pj=blNorm(projName);
+  const nm=blNorm(layerName);
+  if(bl[pj]){
+    bl[pj]=bl[pj].filter(n=>blNorm(n)!==nm);
+    if(!bl[pj].length)delete bl[pj];
+  }
   localStorage.setItem('scanBL',JSON.stringify(bl));
 }
 
@@ -1459,6 +1508,7 @@ function renderSettingsLayerList(){
   if(!gpsPhotos.length&&!allLayers.length)
     html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
   el.innerHTML=html;
+  updateBlCount();
 }
 
 function toggleLayerExpand(eKey){
@@ -1714,33 +1764,115 @@ async function toggleProjectLayers(projEncoded,visible){
 // ===== 파일 불러오기 =====
 // base64 → ArrayBuffer 변환
 // SHP 한국 좌표계 → WGS84 변환
+// 첫 좌표 재귀 추출: Polygon/MultiPolygon 등 몇 경 인지와 무관하게 가장 안쪽 [x,y] 숫자쌍 반환
+function shpFirstCoord(geojson){
+  for(const f of (geojson.features||[])){
+    let g=f.geometry;
+    if(g&&g.type==='GeometryCollection')g=(g.geometries||[])[0];
+    if(!g||!g.coordinates)continue;
+    let c=g.coordinates;
+    while(Array.isArray(c)&&typeof c[0]!=='number')c=c[0];
+    if(Array.isArray(c)&&typeof c[0]==='number'&&typeof c[1]==='number')return c;
+  }
+  return null;
+}
+// 투영 변환 후 좌표가 NaN이면 원본 유지 (proj4가 예외 대신 NaN을 반환하는 케이스 방어)
+function shpXformValid(p){return Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]);}
+// src 투영 → WGS84 전체 변환 (NaN 방어 + GeometryCollection 지원)
+function applyShpXform(geojson,src){
+  const wgs=proj4('EPSG:4326');
+  let okCnt=0,total=0;
+  const xc=c=>{
+    if(!Array.isArray(c[0])){
+      total++;
+      const p=proj4(src,wgs,[c[0],c[1]]);
+      if(!shpXformValid(p))return c;            // NaN 방어: 변환 실패 좌표는 원본 유지
+      okCnt++;return p;
+    }
+    return c.map(xc);
+  };
+  const xg=g=>{
+    if(!g)return g;
+    if(g.type==='GeometryCollection')return{...g,geometries:(g.geometries||[]).map(xg)};
+    return{...g,coordinates:xc(g.coordinates)};
+  };
+  return{features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)})),__ok:okCnt,__total:total};
+}
+// 좌표계 미지정 파일 안전망: 좌표가 한국 TM 미터 범위면 원점 후보 중 한국에 떨어지는 것으로 변환
+function ensureWgs84(geojson){
+  if(typeof proj4==='undefined'||!geojson?.features?.length)return geojson;
+  const fc=shpFirstCoord(geojson);
+  if(!fc)return geojson;
+  if(Math.abs(fc[0])<=180&&Math.abs(fc[1])<=90)return geojson;   // 이미 위경도
+  // 한국 TM 미터 대략 범위(동절 원점 x~130만, UTM-K y~230만 모두 포함) - 세부 판정은 후보별 한국 박스 검증이 담당
+  if(fc[0]<50000||fc[0]>2000000||fc[1]<50000||fc[1]>3000000)return geojson;
+  const cands=['EPSG:5186','EPSG:5179','EPSG:5187','EPSG:5185','EPSG:5188','EPSG:5181','EPSG:5174','EPSG:5173','EPSG:5176','EPSG:5177'];
+  for(const code of cands){
+    try{
+      const src=proj4(code);
+      const p=proj4(src,proj4('EPSG:4326'),[fc[0],fc[1]]);
+      if(Number.isFinite(p[0])&&p[0]>=123&&p[0]<=132&&p[1]>=32.5&&p[1]<=38.8){
+        const out=applyShpXform(geojson,src);
+        if(out.__ok>0){toast('ℹ️ 좌표계 미지정 파일 - '+code+' 추정 변환');return{...geojson,features:out.features};}
+      }
+    }catch(e){}
+  }
+  return geojson;
+}
 function fixShpCoords(geojson,prjBuf){
-  if(!prjBuf||typeof proj4==='undefined')return geojson;
+  if(!prjBuf||typeof proj4==='undefined'||!geojson?.features?.length)return geojson;
   try{
     const prj=new TextDecoder().decode(prjBuf);
     // 이미 WGS84면 패스
     if(prj.includes('GCS_WGS_1984'))return geojson;
-    // 첫 좌표 확인 - 이미 위경도 범위면 패스
-    const f0=geojson.features?.[0]?.geometry?.coordinates;
-    if(f0){
-      const c=Array.isArray(f0[0])?(Array.isArray(f0[0][0])?f0[0][0]:f0[0]):f0;
-      if(Math.abs(c[0])<=180&&Math.abs(c[1])<=90)return geojson;
-    }
-    // 투영 감지
-    let src;
-    try{src=proj4(prj);}
-    catch(e){
-      if(prj.includes('127.5'))src=proj4('EPSG:5179');
-      else if(prj.includes('Korea_2000')||prj.includes('GRS_1980'))src=proj4('EPSG:5186');
-      else if(prj.includes('129'))src=proj4('EPSG:5181');
-      else if(prj.includes('125'))src=proj4('EPSG:5185');
-      else src=proj4('EPSG:5174');
+    // 첫 좌표 확인 - 이미 위경도 범위면 패스 (배열 깊이 무관 재귀 탐색)
+    const fc=shpFirstCoord(geojson);
+    if(fc&&Math.abs(fc[0])<=180&&Math.abs(fc[1])<=90)return geojson;
+    // 투영 감지: proj4js는 WKT 직접 파싱 시 내부 파라미터(long0 등)를 노출하지 않으므로
+    // 유효성은 "첫 좌표를 직접 변환해 본 결과"로 판정한다 (예외/NaN/한국 박스 밖이면 실패 처리)
+    let src=null,srcName='WKT';
+    try{
+      const p=proj4(prj);
+      if(p&&fc){
+        const t=proj4(p,proj4('EPSG:4326'),[fc[0],fc[1]]);
+        if(Number.isFinite(t[0])&&Number.isFinite(t[1])&&t[0]>=118&&t[0]<=137&&t[1]>=30&&t[1]<=46)src=p;
+      }
+    }catch(e){}
+    if(!src){
+      // WKT 직접 사용 실패(깨진 WKT·원점 누락 등) → 중심자선 값으로 표준 EPSG 추정
+      const cm=(prj.match(/central_?meridian["',\s]+([\d.]+)/i)||[])[1];
+      const isGRS80=/Korea_2000|Korea 2000|GRS_1980|GRS 1980/i.test(prj);
+      const v=cm?parseFloat(cm):null;
+      if(v===null||!Number.isFinite(v)){
+        if(prj.includes('127.5')){src=proj4('EPSG:5179');srcName='5179';}
+        else{src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
+      }else if(Math.abs(v-127.5)<0.01){src=proj4('EPSG:5179');srcName='5179';}   // UTM-K 통합원점
+      else if(Math.abs(v-125)<0.01){src=proj4(isGRS80?'EPSG:5185':'EPSG:5173');srcName=isGRS80?'5185':'5173';}
+      else if(Math.abs(v-129)<0.01){src=proj4(isGRS80?'EPSG:5187':'EPSG:5176');srcName=isGRS80?'5187':'5176';}
+      else if(Math.abs(v-131)<0.01){src=proj4(isGRS80?'EPSG:5188':'EPSG:5177');srcName=isGRS80?'5188':'5177';}
+      else if(Math.abs(v-127)<0.02){src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
+      else{src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
     }
     const wgs=proj4('EPSG:4326');
-    const xc=c=>{if(!Array.isArray(c[0]))return proj4(src,wgs,[c[0],c[1]]);return c.map(xc);};
-    const xg=g=>g?{...g,coordinates:xc(g.coordinates)}:g;
-    toast('✅ 한국 좌표계 변환 완료');
-    return{...geojson,features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)}))};
+    let okCnt=0,total=0;
+    const xc=c=>{
+      if(!Array.isArray(c[0])){
+        total++;
+        const p=proj4(src,wgs,[c[0],c[1]]);
+        if(!shpXformValid(p))return c;            // NaN 방어: 변환 실패 좌표는 원본 유지
+        okCnt++;return p;
+      }
+      return c.map(xc);
+    };
+    const xg=g=>{
+      if(!g)return g;
+      if(g.type==='GeometryCollection')return{...g,geometries:(g.geometries||[]).map(xg)};
+      return{...g,coordinates:xc(g.coordinates)};
+    };
+    const out={...geojson,features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)}))};
+    if(okCnt>0)toast('✅ 한국 좌표계 변환 완료 ('+okCnt+'/'+(total||okCnt)+'점)');
+    else console.warn('좌표변환: 유효 변환 없음 - 원본 유지');
+    return out;
   }catch(e){console.error('좌표변환실패',e);return geojson;}
 }
 
@@ -1787,10 +1919,10 @@ async function scanProjectLayers(projName){
     const existingNames=new Set(existingLayers.map(l=>l.name));
     const existingSrc=new Set(existingLayers.map(l=>l.srcFile).filter(Boolean));
 
-    // 파일을 기본이름으로 그룹핑
+    // 파일을 기본이름으로 그룹핑 (대소문자 정규화: PIPE.SHP와 pipe.dbf도 한 세트로 묶임)
     const groups={};
     rawFiles.forEach(f=>{
-      const base=f.name.replace(/\.[^.]+$/,'');
+      const base=f.name.replace(/\.[^.]+$/,'').toLowerCase();
       if(!groups[base])groups[base]={};
       groups[base][f.ext.toLowerCase()]=f.path;
     });
@@ -1814,6 +1946,8 @@ async function scanProjectLayers(projName){
           }
           if(!files.prj)toast(`⚠️ ${name}: .prj 없음 - 좌표계 미지정 시 위치가 틀릴 수 있어요`);
           geojson=await shp(obj);
+          // prj 있어도 shpjs가 WKT를 못 읽는 경우 대비 + prj 없으면 한국 TM 추정 변환 안전망
+          geojson=files.prj?fixShpCoords(geojson,files.prj?b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj)):null):ensureWgs84(geojson);
         }else if(files.kmz){
           // KMZ 처리 (멀티레이어)
           const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.kmz));
@@ -1874,6 +2008,17 @@ function normalizeCpgLabel(raw){
     'ks_c_5601-1987','ks_c_5601-1989','korean','cseuckr','csksc56011987','iso-ir-149'];
   return KR.includes(v)?'euc-kr':v;
 }
+// 인코딩 자동판별: UTF-8로 디코딩해 깨짐문자(U+FFFD)가 나오면 CP949(EUC-KR)로 재판정.
+// "무조건 euc-kr 강제"는 UTF-8 최신 산출물(QGIS 등)을 오히려 깨뜨리므로 감지 기반으로 판단.
+function shpDecodeToUtf8(buf){
+  try{return new TextDecoder('utf-8',{fatal:false}).decode(buf);}catch(e){return '';}
+}
+function looksLikeCp949(buf){
+  try{
+    const dec=new TextDecoder('euc-kr',{fatal:false}).decode(buf);
+    return !dec.includes('\uFFFD');   // CP949로 깨끗하게 읽히면 CP949일 가능성 높음
+  }catch(e){return false;}
+}
 
 async function onFileSelected(e){
   const files=[...e.target.files];if(!files.length)return;
@@ -1887,8 +2032,22 @@ async function onFileSelected(e){
     const shpBuf=await shpFile.arrayBuffer();
     const dbfBuf=dbfFile?await dbfFile.arrayBuffer():null;
     const prjBuf=prjFile?await prjFile.arrayBuffer():null;
-    const cpgLbl=cpgFile?normalizeCpgLabel(await cpgFile.text()):'';
-    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf,prjBuf,cpgLbl};
+    let cpgLbl=cpgFile?normalizeCpgLabel(await cpgFile.text()):'';
+    // cpg 없고 DBF가 CP949로 판명되면 euc-kr 지정 (UTF-8이면 기본값 유지 - 자동판별)
+    if(!cpgLbl&&dbfBuf&&looksLikeCp949(dbfBuf)){
+      cpgLbl='euc-kr';
+      toast('한글 인코딩 CP949 감지');
+    }
+    // 파일명 기반 매칭: 여러 세트를 같이 골라도 관로.shp+관로.dbf가 서로 엮이지 않게 base명 비교
+    const shpBase=name.toLowerCase();
+    const findFor=ext=>files.find(f=>f.name.toLowerCase().endsWith(ext)&&
+      f.name.replace(/\.[^.]+$/i,'').toLowerCase()===shpBase);
+    const dbfM=findFor('.dbf')||dbfFile, prjM=findFor('.prj')||prjFile, cpgM=findFor('.cpg')||cpgFile;
+    const dbfBuf2=dbfM?await dbfM.arrayBuffer():dbfBuf;
+    const prjBuf2=prjM?await prjM.arrayBuffer():prjBuf;
+    let cpgLbl2=cpgM?(cpgM===cpgFile?cpgLbl:normalizeCpgLabel(await cpgM.text())):'';
+    if(!cpgLbl2&&dbfBuf2&&looksLikeCp949(dbfBuf2))cpgLbl2='euc-kr';
+    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf:dbfBuf2,prjBuf:prjBuf2,cpgLbl:cpgLbl2};
     document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
   }else{
     pendingFile=files[0];
@@ -1949,6 +2108,7 @@ async function loadLayerFile(file,projectName){
       if(file.cpgLbl)shpObj.cpg=file.cpgLbl;
       geojson=await shp(shpObj);
       if(file.prjBuf)geojson=fixShpCoords(geojson,file.prjBuf);
+      else geojson=ensureWgs84(geojson);   // prj 없는 파일 안전망 (한국 TM 추정 변환)
     }else if(file.name.toLowerCase().endsWith('.kmz')){
       displayName=file.name.replace(/\.kmz$/i,'');
       const zip=await JSZip.loadAsync(await file.arrayBuffer());
@@ -1956,7 +2116,7 @@ async function loadLayerFile(file,projectName){
       if(!kmlF){toast('KMZ 안에 KML이 없어요');return;}
       multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'),displayName);
     }else if(file.name.endsWith('.zip')){
-      displayName=file.name.replace(/\.zip$/i,'');geojson=await shp(await file.arrayBuffer());
+      displayName=file.name.replace(/\.zip$/i,'');geojson=ensureWgs84(await shp(await file.arrayBuffer()));
     }else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){
       displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());
     }else if(file.name.endsWith('.kml')){
@@ -1995,7 +2155,76 @@ async function loadLayerFile(file,projectName){
     saveLayerOrder();
     try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
     renderSettingsLayerList();toast('✅ '+name+' 추가됨');
-  }catch(err){toast('파일 읽기 실패: '+err.message);console.error(err);}
+  }catch(err){
+    console.error(err);
+    showErrDialog(err, '파일: '+((file&&file.name)||'?')+' / 프로젝트: '+projectName);
+  }
+}
+
+// ===== 파일 읽기 실패 상세 다이얼로그 =====
+let lastErrDetail='';
+function showErrDialog(err,ctx){
+  lastErrDetail=(ctx||'')+'\n'+(err&&(err.stack||err.message)||String(err));
+  document.getElementById('err-msg').textContent=lastErrDetail;
+  document.getElementById('err-overlay').style.display='flex';
+}
+function closeErrDialog(){document.getElementById('err-overlay').style.display='none';}
+function copyErrDetail(){
+  const t=document.getElementById('err-msg').textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(()=>toast('복사됨'),()=>toast('복사 실패'));
+  else toast('이 기기에서는 복사 미지원');
+}
+
+// ===== 블랙리스트 관리 =====
+function blAllEntries(){
+  let bl;try{bl=JSON.parse(localStorage.getItem('scanBL')||'{}');}catch(e){bl={};}
+  const out=[];
+  Object.keys(bl).sort().forEach(pj=>(bl[pj]||[]).forEach(nm=>out.push({proj:pj,name:nm})));
+  return out;
+}
+// 블랙리스트 건수 표기 (설정 열릴 때마다 갱신)
+function updateBlCount(){
+  const el=document.getElementById('bl-count');
+  if(el){const n=blAllEntries().length;el.textContent=n?'('+n+')':'';}
+}
+function openBlacklistManager(){
+  const list=blAllEntries();
+  const el=document.getElementById('settings-layer-list');
+  const blBtn=document.querySelector('[onclick="openBlacklistManager()"]');
+  if(blBtn)blBtn.style.display='none';
+  let html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+    '<div style="font-size:13px;font-weight:700">🚫 삭제한 파일 목록 ('+list.length+'개)</div>'+
+    '<button class="bl-restore-btn" style="color:var(--danger);border-color:rgba(255,68,68,.4);background:rgba(255,68,68,.08)" '+
+    'onclick="blClearAll('+list.length+')">전체 삭제</button></div>';
+  if(!list.length)
+    html+='<div style="font-size:12px;color:var(--dim);padding:8px 0">삭제 이력이 없어요</div>';
+  list.forEach((e,i)=>{
+    const attr=encodeURIComponent(e.proj)+"','";
+    const nmA=encodeURIComponent(e.name);
+    html+='<div class="layer-item" style="padding-left:4px">'+
+      '<div class="layer-info"><div class="layer-name" style="font-size:13px">'+e.name.replace(/'/g,'&#39;')+'</div>'+
+      '<div class="layer-sub">📁 '+e.proj.replace(/'/g,'&#39;')+'</div></div>'+
+      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">삭제 해제</button></div>';
+  });
+  html+='<button class="add-btn-outline" style="width:100%;margin-top:8px" onclick="closeBlacklistManager()">← 레이어 목록으로</button>';
+  el.innerHTML=html;
+}
+function closeBlacklistManager(){
+  const blBtn=document.querySelector('[onclick="openBlacklistManager()"]');
+  if(blBtn)blBtn.style.display='';
+  renderSettingsLayerList();
+}
+function blRemoveOne(pjEnc,nmEnc){
+  removeScanBlacklist(decodeURIComponent(pjEnc),decodeURIComponent(nmEnc));
+  toast('삭제 해제됨 - 폴더 읽기에서 다시 등록돼요');
+  openBlacklistManager();
+}
+function blClearAll(n){
+  if(n>0&&!confirm('삭제 이력을 전부 지울까요? 폴더 읽기 시 삭제했던 파일도 다시 등록됩니다.'))return;
+  localStorage.removeItem('scanBL');
+  toast('블랙리스트 비움');
+  openBlacklistManager();
 }
 
 async function loadFromURL(){
