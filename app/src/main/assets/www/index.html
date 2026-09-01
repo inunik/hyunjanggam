@@ -820,69 +820,36 @@ function capture(){
 }
 
 function drawStamp(ctx,w,h){
-  const fs=Math.round(Math.min(w,h)*0.022); // 작은 폰트
-  const pad=Math.round(fs*0.5);
-  const r=4; // 배경 둥글기
+  const fs=Math.round(Math.min(w,h)*0.045); // 1.5배 크게
+  const pad=Math.round(w*0.022);
+  const lineH=Math.round(fs*1.6);
 
-  const proj=selectedProject?.name||'';
-  const desc=document.getElementById('desc-inp').value||'';
+  ctx.fillStyle='#fff';
+  ctx.font=`${fs}px sans-serif`;
+  ctx.textBaseline='top'; // 위에서부터 시작
+  ctx.shadowColor='rgba(0,0,0,0.9)';
+  ctx.shadowBlur=8;
+  ctx.shadowOffsetX=2;
+  ctx.shadowOffsetY=2;
+
   const latS=gps?`LAT ${gps.latitude.toFixed(6)}`:'LAT N/A';
   const lonS=gps?`LON ${gps.longitude.toFixed(6)}`:'LON N/A';
   const altS=gps&&gps.altitude?`ALT ${Math.round(gps.altitude)}m`:'';
-  const accS=gps?`±${Math.round(gps.accuracy)}m`:'';
-  const timeS=fmtNow();
 
-  // 둥근 배경 그리기
-  function pill(x,y,text,font,color,bgColor,align){
-    ctx.font=font||`${fs}px "Courier New",monospace`;
-    const tw=ctx.measureText(text).width;
-    const bw=tw+pad*2, bh=fs+pad*1.2;
-    const bx=align==='right'?x-bw:x;
-    const by=y;
-    ctx.fillStyle=bgColor||'rgba(0,0,0,0.52)';
-    ctx.beginPath();
-    ctx.moveTo(bx+r,by);ctx.lineTo(bx+bw-r,by);
-    ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+r);
-    ctx.lineTo(bx+bw,by+bh-r);
-    ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-r,by+bh);
-    ctx.lineTo(bx+r,by+bh);
-    ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-r);
-    ctx.lineTo(bx,by+r);
-    ctx.quadraticCurveTo(bx,by,bx+r,by);
-    ctx.closePath();ctx.fill();
-    ctx.fillStyle=color||'#fff';
-    ctx.textBaseline='middle';
-    ctx.textAlign=align==='right'?'right':'left';
-    ctx.fillText(text,align==='right'?bx+bw-pad:bx+pad,by+bh/2);
-  }
+  // ── 좌상단: 좌표 + 고도 ──
+  ctx.textAlign='left';
+  let y=pad;
+  ctx.fillText(latS,pad,y); y+=lineH;
+  ctx.fillText(lonS,pad,y); y+=lineH;
+  if(altS) ctx.fillText(altS,pad,y);
 
-  const gap=Math.round(fs*1.6);
-  const margin=Math.round(w*0.012);
+  // ── 우상단: 날짜시간 ──
+  ctx.textAlign='right';
+  ctx.fillText(fmtNow(),w-pad,pad);
 
-  // 왼쪽 하단: 좌표 + 고도
-  let y=h-margin;
-  if(altS){
-    y-=fs+pad*1.2;
-    pill(margin,y,`${altS}  ${accS}`,null,'#00E5A0');
-  }
-  y-=gap;
-  pill(margin,y,lonS,null,'#00E5A0');
-  y-=gap;
-  pill(margin,y,latS,null,'#00E5A0');
-
-  // 오른쪽 하단: 시간 + 설명 + 프로젝트
-  y=h-margin;
-  y-=fs+pad*1.2;
-  pill(w-margin,y,timeS,null,'rgba(255,255,255,0.85)','rgba(0,0,0,0.52)','right');
-  if(desc){
-    y-=gap;
-    pill(w-margin,y,'▸ '+desc,null,'rgba(255,255,255,0.85)','rgba(0,0,0,0.52)','right');
-  }
-  if(proj){
-    y-=gap;
-    const projColor=selectedProject?.color||'#FF6B00';
-    pill(w-margin,y,proj,`bold ${fs}px sans-serif`,projColor,'rgba(0,0,0,0.6)','right');
-  }
+  // 그림자 초기화
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;
+  ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
 }
 
 // ===== 탭 =====
