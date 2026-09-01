@@ -838,7 +838,8 @@ function applyStoredLayerOrder(){
     allLayers.sort((a,b)=>{
       const ak=a.geojsonPath||String(a.id||a.name);
       const bk=b.geojsonPath||String(b.id||b.name);
-      return (orderMap[ak]??999)-(orderMap[bk]??999);
+      // 미기록(새로 추가) 레이어는 -1 → 목록 맨 위 = 지도 맨 위 (추가 즉시 보임)
+      return (orderMap[ak]??-1)-(orderMap[bk]??-1);
     });
   }catch(e){
     // fallback: order 필드로 정렬
@@ -1266,7 +1267,8 @@ function copyText(t){
 // ===== 레이어 =====
 async function loadLayersToMap(){
   await loadAllLayers();
-  allLayers.forEach(l=>addLeafletLayer(l));
+  // 역순 추가: allLayers[0](목록 맨 위)이 지도 최상위가 되도록
+  [...allLayers].reverse().forEach(l=>addLeafletLayer(l));
 }
 
 function addLeafletLayer(l){
@@ -1329,6 +1331,7 @@ async function toggleLayer(idx){
   const key=l.geojsonPath||l.id;
   const lf=leafletLayers[key];
   if(lf){newVis?lf.addTo(map):map.removeLayer(lf);}
+  reapplyLayerOrder(); // 다시 켠 레이어가 최상위로 점프하는 것 방지 (목록 순서 유지)
   renderSettingsLayerList();
 }
 
@@ -1735,11 +1738,16 @@ function reapplyLayerOrder(){
   if(!map)return;
   // 기존 레이어 전부 제거
   Object.values(leafletLayers).forEach(lf=>{if(map.hasLayer(lf))map.removeLayer(lf);});
-  // 순서대로 재추가 (나중에 추가될수록 위에 표시)
-  allLayers.forEach(l=>{
+  // 역순으로 재추가: allLayers[0](목록 맨 위)이 지도에서도 가장 위에 오도록
+  // (나중에 addTo할수록 위에 쌓이므로 배열 끝부터 추가)
+  [...allLayers].reverse().forEach(l=>{
     const key=l.geojsonPath||l.id;
     const lf=leafletLayers[key];
     if(lf&&l.visible)lf.addTo(map);
+  });
+  // 사진 마커는 항상 레이어 위 (마지막에 재추가)
+  Object.entries(photoLayerGroups).forEach(([key,lg])=>{
+    if(photoLayerVisible[key]!==false)lg.addTo(map);
   });
 }
 
@@ -1758,6 +1766,7 @@ async function toggleProjectLayers(projEncoded,visible){
     const lf=leafletLayers[key];
     if(lf){visible?lf.addTo(map):map.removeLayer(lf);}
   }
+  reapplyLayerOrder(); // 스택 순서 복원
   renderSettingsLayerList();
 }
 
@@ -1983,6 +1992,10 @@ async function scanProjectLayers(projName){
             continue;
           }
           geojson=mls[0]?.geojson;
+        }else if(files.zip){
+          // ZIP(SHP 압축본) 처리 - 폴더 스캔 경로
+          const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.zip));
+          geojson=ensureWgs84(await shp(buf));
         }else if(files.geojson||files.json){
           // GeoJSON 처리
           geojson=JSON.parse(AndroidBridge.readText(files.geojson||files.json));
@@ -2139,6 +2152,7 @@ async function loadLayerFile(file,projectName){
         added++;
       }
       saveLayerOrder();
+      reapplyLayerOrder(); // 새 레이어들을 목록 순서대로 지도에 반영
       renderSettingsLayerList();
       const msg=added>1?`✅ ${added}개 레이어 추가됨 (${displayName})`:'✅ '+(multiLayers[0]?.name||displayName)+' 추가됨';
       toast(msg);
@@ -2153,6 +2167,7 @@ async function loadLayerFile(file,projectName){
     const newLayer=allLayers[allLayers.length-1];
     if(newLayer)addLeafletLayer(newLayer);
     saveLayerOrder();
+    reapplyLayerOrder(); // 새 레이어를 목록 순서(맨 아래)에 맞게 재배치
     try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
     renderSettingsLayerList();toast('✅ '+name+' 추가됨');
   }catch(err){
