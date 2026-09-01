@@ -305,12 +305,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️ VWorld위성</button>
         <button class="map-type-btn" id="mtype-vworld-gray" onclick="setMapType('vworld-gray')">지적도</button>
       </div>
+      <div style="font-size:10px;color:var(--gps);margin-bottom:12px">↑ 지적도는 API 키 필요 (무료)</div>
       <div class="set-label" style="margin-bottom:8px">🌏 해외용</div>
       <div class="map-type-btns">
         <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ ESRI위성</button>
         <button class="map-type-btn" id="mtype-osm" onclick="setMapType('osm')">OSM</button>
       </div>
-      <div style="font-size:10px;color:var(--dim);margin-top:8px">지적도만 API 키 필요</div>
     </div>
 
     <div class="set-section">VWorld API 키 (지적도용)</div>
@@ -1064,9 +1064,7 @@ function locateMe(){navigator.geolocation.getCurrentPosition(p=>{if(map)map.setV
 function updateMyLocation(coords){
   if(!map)return;
   const latlng=[coords.latitude,coords.longitude];
-  const acc=coords.accuracy;
 
-  // 파란 점 아이콘
   const icon=L.divIcon({
     className:'',
     html:`<div style="
@@ -1081,17 +1079,9 @@ function updateMyLocation(coords){
   });
 
   if(!myLocMarker){
-    // 처음: 마커와 정확도 원 생성
     myLocMarker=L.marker(latlng,{icon,zIndexOffset:1000}).addTo(map);
-    myLocCircle=L.circle(latlng,{
-      radius:acc,
-      color:'#2196F3',fillColor:'#2196F3',
-      fillOpacity:0.08,weight:1,opacity:0.4
-    }).addTo(map);
   }else{
-    // 업데이트
     myLocMarker.setLatLng(latlng).setIcon(icon);
-    myLocCircle.setLatLng(latlng).setRadius(acc);
   }
 }
 
