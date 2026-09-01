@@ -201,6 +201,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .toggle-btn.off::after{left:3px}
 .del-btn{width:30px;height:30px;border-radius:8px;border:none;background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .del-btn svg{width:14px;height:14px}
+.ord-btn{width:26px;height:26px;border-radius:6px;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ord-btn:disabled{opacity:.25;cursor:default}
+.layer-proj-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0 4px;margin-top:6px;border-top:1px solid var(--border)}
+.layer-proj-hdr:first-child{border-top:none;margin-top:0}
+.layer-proj-name{font-size:12px;font-weight:700;color:var(--text)}
+.layer-proj-toggle{font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600}
 
 /* ── 내보내기 카드 ── */
 .exp-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
@@ -327,8 +335,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="set-card" style="margin-bottom:12px">
       <div id="settings-layer-list" style="margin-bottom:10px"></div>
       <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
+        onclick="scanAllProjectLayers()">
+        🔍 폴더에서 파일 자동 읽기 (SHP·KML·KMZ)
+      </button>
+      <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
         onclick="document.getElementById('file-inp').click()">
-        📁 파일 추가 (SHP / KML / KMZ / GeoJSON)
+        📁 파일 직접 선택
       </button>
       <div class="url-input-row">
         <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
@@ -1184,6 +1196,10 @@ async function openSettings(){
   document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
   const curBtn=document.getElementById('mtype-'+cur);if(curBtn)curBtn.classList.add('on');
   await loadProjects();await loadAllPhotos();await loadAllLayers();
+
+  // USB로 넣은 파일 자동 스캔
+  if(IS_APK) autoScanFolders();
+
   renderSettingsLayerList();
   renderExportInSettings();
 }
@@ -1204,10 +1220,9 @@ function saveVWorldKey(){
 function renderSettingsLayerList(){
   const el=document.getElementById('settings-layer-list');if(!el)return;
   const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
-
   let html='';
 
-  // 사진 레이어
+  // ── 📸 사진 (프로젝트별 토글) ──
   if(gpsPhotos.length>0){
     const groups={};
     gpsPhotos.forEach(p=>{
@@ -1218,7 +1233,7 @@ function renderSettingsLayerList(){
     const allOn=Object.keys(groups).every(k=>photoLayerVisible[k]!==false);
     html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <span style="font-size:11px;color:var(--dim);font-weight:700">📸 사진</span>
-      <button style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+      <button class="layer-proj-toggle" onclick="toggleAllPhotoLayers(${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
     </div>`;
     Object.entries(groups).forEach(([key,g])=>{
       const on=photoLayerVisible[key]!==false;
@@ -1230,21 +1245,39 @@ function renderSettingsLayerList(){
     });
   }
 
-  // 지도 레이어
+  // ── 🗺️ 지도 레이어 (프로젝트별 그룹 + 순서 이동) ──
   if(allLayers.length>0){
-    html+=`<div style="font-size:11px;color:var(--dim);font-weight:700;margin:10px 0 6px">🗺️ 지도 레이어</div>`;
-    allLayers.forEach(l=>{
-      const key=l.geojsonPath||l.id;
-      html+=`<div class="layer-item">
-        <div class="layer-color" style="background:${l.color}"></div>
-        <div class="layer-info"><div class="layer-name">${l.name}</div><div class="layer-sub">${l.projectName||l.project||''}</div></div>
-        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer('${key}')"></button>
-        <button class="del-btn" onclick="deleteLayer('${key}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-          </svg>
-        </button>
+    html+=`<div style="font-size:11px;color:var(--dim);font-weight:700;margin:10px 0 4px">🗺️ 지도 레이어</div>`;
+
+    // 프로젝트별 그룹핑
+    const projGroups={};
+    allLayers.forEach((l,idx)=>{
+      const proj=l.projectName||l.project||'미분류';
+      if(!projGroups[proj])projGroups[proj]=[];
+      projGroups[proj].push({l,idx});
+    });
+
+    Object.entries(projGroups).forEach(([proj,items])=>{
+      const allOn2=items.every(x=>x.l.visible);
+      html+=`<div class="layer-proj-hdr">
+        <span class="layer-proj-name">📁 ${proj}</span>
+        <button class="layer-proj-toggle" onclick="toggleProjectLayers('${encodeURIComponent(proj)}',${!allOn2})">${allOn2?'전체 끄기':'전체 켜기'}</button>
       </div>`;
+      items.forEach(({l,idx})=>{
+        const key=encodeURIComponent(l.geojsonPath||String(l.id));
+        html+=`<div class="layer-item" style="padding-left:8px">
+          <div class="layer-color" style="background:${l.color}"></div>
+          <div class="layer-info"><div class="layer-name">${l.name}</div></div>
+          <button class="ord-btn" ${idx===0?'disabled':''} onclick="moveLayer(${idx},-1)">▲</button>
+          <button class="ord-btn" ${idx===allLayers.length-1?'disabled':''} onclick="moveLayer(${idx},1)">▼</button>
+          <button class="toggle-btn ${l.visible?'on':'off'}" onclick="toggleLayer('${key}')"></button>
+          <button class="del-btn" onclick="deleteLayer('${key}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+            </svg>
+          </button>
+        </div>`;
+      });
     });
   }
 
@@ -1254,8 +1287,150 @@ function renderSettingsLayerList(){
   el.innerHTML=html;
 }
 
+// ===== 레이어 순서 이동 =====
+async function moveLayer(idx,dir){
+  const newIdx=idx+dir;
+  if(newIdx<0||newIdx>=allLayers.length)return;
+
+  // 배열에서 swap
+  const tmp=allLayers[idx];
+  allLayers[idx]=allLayers[newIdx];
+  allLayers[newIdx]=tmp;
+
+  // 저장소 업데이트 (order 필드)
+  if(IS_APK){
+    const la=allLayers[idx],lb=allLayers[newIdx];
+    if(la.geojsonPath)AndroidBridge.updateLayerMeta(la.geojsonPath,
+      JSON.stringify({color:la.color,visible:la.visible,project:la.projectName||la.project||'',order:idx}));
+    if(lb.geojsonPath)AndroidBridge.updateLayerMeta(lb.geojsonPath,
+      JSON.stringify({color:lb.color,visible:lb.visible,project:lb.projectName||lb.project||'',order:newIdx}));
+  }else{
+    await dbPut('layers',{...allLayers[idx],order:idx});
+    await dbPut('layers',{...allLayers[newIdx],order:newIdx});
+  }
+
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+}
+
+// 레이어를 allLayers 순서대로 지도에 재적용
+function reapplyLayerOrder(){
+  if(!map)return;
+  // 기존 레이어 전부 제거
+  Object.values(leafletLayers).forEach(lf=>{if(map.hasLayer(lf))map.removeLayer(lf);});
+  // 순서대로 재추가 (나중에 추가될수록 위에 표시)
+  allLayers.forEach(l=>{
+    const key=l.geojsonPath||l.id;
+    const lf=leafletLayers[key];
+    if(lf&&l.visible)lf.addTo(map);
+  });
+}
+
+// 프로젝트 전체 레이어 켜기/끄기
+async function toggleProjectLayers(projEncoded,visible){
+  const proj=decodeURIComponent(projEncoded);
+  for(const l of allLayers){
+    if((l.projectName||l.project||'미분류')!==proj)continue;
+    l.visible=visible;
+    if(IS_APK&&l.geojsonPath){
+      AndroidBridge.updateLayerMeta(l.geojsonPath,
+        JSON.stringify({color:l.color,visible,project:l.projectName||l.project||''}));
+    }else if(!IS_APK){
+      await dbPut('layers',{...l,visible});
+    }
+    const key=l.geojsonPath||l.id;
+    const lf=leafletLayers[key];
+    if(lf){visible?lf.addTo(map):map.removeLayer(lf);}
+  }
+  renderSettingsLayerList();
+}
+
 // ===== 파일 불러오기 =====
-let pendingFile=null;
+// base64 → ArrayBuffer 변환
+function b64ToArrayBuffer(b64){
+  const bin=atob(b64);
+  const buf=new ArrayBuffer(bin.length);
+  const view=new Uint8Array(buf);
+  for(let i=0;i<bin.length;i++)view[i]=bin.charCodeAt(i);
+  return buf;
+}
+
+// 자동 스캔 (설정 열 때 조용히 실행)
+async function autoScanFolders(){
+  let total=0;
+  for(const p of projects){
+    const added=await scanProjectLayers(p.name);
+    total+=added;
+  }
+  if(total>0){
+    await loadAllLayers();
+    renderSettingsLayerList();
+    if(map)loadLayersToMap();
+    toast(`📂 USB 파일 ${total}개 자동으로 읽었어요`);
+  }
+}
+
+// 수동 스캔 버튼용
+async function scanAllProjectLayers(){
+  if(!IS_APK){toast('APK에서만 사용 가능해요');return;}
+  toast('스캔 중...');
+  await loadProjects();
+  await autoScanFolders();
+  if(document.getElementById('settings-panel').classList.contains('open'))
+    renderSettingsLayerList();
+}
+
+async function scanProjectLayers(projName){
+  try{
+    const rawFiles=JSON.parse(AndroidBridge.listRawLayerFiles(projName));
+    const existing=JSON.parse(AndroidBridge.listLayers(projName)).map(l=>l.name);
+
+    // 파일을 기본이름으로 그룹핑
+    const groups={};
+    rawFiles.forEach(f=>{
+      const base=f.name.replace(/\.[^.]+$/,'');
+      if(!groups[base])groups[base]={};
+      groups[base][f.ext.toLowerCase()]=f.path;
+    });
+
+    let added=0;
+    for(const [name,files] of Object.entries(groups)){
+      if(existing.includes(name))continue; // 이미 처리됨
+
+      let geojson;
+      try{
+        if(files.shp){
+          // SHP 처리
+          const shpBuf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.shp));
+          const obj={shp:shpBuf};
+          if(files.dbf)obj.dbf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.dbf));
+          if(files.prj)obj.prj=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj));
+          geojson=await shp(obj);
+        }else if(files.kmz){
+          // KMZ 처리
+          const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.kmz));
+          const zip=await JSZip.loadAsync(buf);
+          const kf=zip.file('doc.kml')||Object.values(zip.files).find(x=>x.name.endsWith('.kml'));
+          if(kf)geojson=kmlToGeoJSON(new DOMParser().parseFromString(await kf.async('string'),'text/xml'));
+        }else if(files.kml){
+          // KML 처리
+          geojson=kmlToGeoJSON(new DOMParser().parseFromString(AndroidBridge.readText(files.kml),'text/xml'));
+        }else if(files.geojson||files.json){
+          // GeoJSON 처리
+          geojson=JSON.parse(AndroidBridge.readText(files.geojson||files.json));
+        }
+
+        if(geojson){
+          const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+          await saveLayerData(projName,name,geojson,color,true);
+          added++;
+          toast(`📂 ${name} 읽는 중...`);
+        }
+      }catch(e){console.error('파일 처리 실패:',name,e);}
+    }
+    return added;
+  }catch(e){console.error('스캔 실패:',projName,e);return 0;}
+}
 async function onFileSelected(e){
   const files=[...e.target.files];if(!files.length)return;
   e.target.value='';
@@ -1348,22 +1523,51 @@ async function loadLayerFile(file,projectName){
 async function loadFromURL(){
   const url=document.getElementById('layer-url-inp').value.trim();
   if(!url){toast('URL을 입력해주세요');return;}
+  toast('URL 불러오는 중...');
   try{
-    toast('URL 불러오는 중...');
-    const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);
-    const filename=url.split('/').pop().split('?')[0]||'layer';
+    let filename=url.split('/').pop().split('?')[0]||'layer';
     let file;
-    if(url.toLowerCase().includes('.kmz')){
-      const blob=await res.blob();file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',{type:'application/vnd.google-earth.kmz'});
+
+    if(IS_APK){
+      // Android 네이티브 요청 (CORS 없음)
+      const result=AndroidBridge.fetchUrl(url);
+      if(result.startsWith('error:'))throw new Error(result.substring(6));
+
+      if(result.startsWith('base64:')){
+        // KMZ (바이너리)
+        const b64=result.substring(7);
+        const blob=new Blob([b64ToArrayBuffer(b64)],{type:'application/vnd.google-earth.kmz'});
+        if(!filename.toLowerCase().endsWith('.kmz'))filename+='.kmz';
+        file=new File([blob],filename,{type:'application/vnd.google-earth.kmz'});
+      }else{
+        // KML/GeoJSON (텍스트)
+        const text=result.substring(5); // "text:" 제거
+        const ext=filename.toLowerCase().endsWith('.geojson')?'geojson':'kml';
+        file=new File([text],filename.endsWith('.'+ext)?filename:filename+'.'+ext,
+          {type:'text/plain'});
+      }
     }else{
-      const text=await res.text();file=new File([text],filename.endsWith('.kml')?filename:filename+'.kml',{type:'application/vnd.google-earth.kml+xml'});
+      // 브라우저 fallback
+      const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);
+      const isKmz=url.toLowerCase().includes('.kmz');
+      if(isKmz){
+        const blob=await res.blob();
+        file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',
+          {type:'application/vnd.google-earth.kmz'});
+      }else{
+        const text=await res.text();
+        file=new File([text],filename.endsWith('.kml')?filename:filename+'.kml',
+          {type:'application/vnd.google-earth.kml+xml'});
+      }
     }
-    pendingFile=file;
+
     document.getElementById('layer-url-inp').value='';
     document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
+    pendingFile=file;
     await renderLayerProjList();
     document.getElementById('layer-proj-panel').classList.add('open');
-  }catch(err){toast('URL 불러오기 실패: '+err.message);}
+
+  }catch(err){toast('URL 불러오기 실패: '+err.message);console.error(err);}
 }
 
 function kmlToGeoJSON(kml){

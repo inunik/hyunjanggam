@@ -345,17 +345,29 @@ public class MainActivity extends AppCompatActivity {
         public String listRawLayerFiles(String projectName) {
             try {
                 JSONArray arr = new JSONArray();
-                File ld = new File(new File(baseDir, projectName), "레이어");
-                if (!ld.exists()) return "[]";
-                File[] files = ld.listFiles(f -> {
-                    String n = f.getName().toLowerCase();
-                    return n.endsWith(".shp") || n.endsWith(".kml") || n.endsWith(".kmz") || n.endsWith(".geojson");
-                });
-                if (files != null) for (File f : files) {
-                    JSONObject o = new JSONObject();
-                    o.put("name", f.getName());
-                    o.put("path", f.getAbsolutePath());
-                    arr.put(o);
+                // 프로젝트 루트와 레이어 폴더 둘 다 스캔
+                File projDir = new File(baseDir, projectName);
+                File layerDir = new File(projDir, "레이어");
+                File[] dirs = {projDir, layerDir};
+                for (File dir : dirs) {
+                    if (!dir.exists()) continue;
+                    File[] files = dir.listFiles();
+                    if (files == null) continue;
+                    for (File f : files) {
+                        if (f.isDirectory()) continue;
+                        String n = f.getName().toLowerCase();
+                        // 불필요한 파일 제외
+                        if (n.equals("project.json")) continue;
+                        if (n.endsWith(".meta.json")) continue;
+                        if (n.endsWith(".cpg") || n.endsWith(".qmd") || n.endsWith(".sbx") || n.endsWith(".sbn")) continue;
+                        // 처리 가능한 파일만
+                        String ext = n.contains(".") ? n.substring(n.lastIndexOf(".")+1) : "";
+                        JSONObject o = new JSONObject();
+                        o.put("name", f.getName());
+                        o.put("path", f.getAbsolutePath());
+                        o.put("ext", ext);
+                        arr.put(o);
+                    }
                 }
                 return arr.toString();
             } catch (Exception e) { return "[]"; }
@@ -367,6 +379,32 @@ public class MainActivity extends AppCompatActivity {
                 byte[] data = java.nio.file.Files.readAllBytes(new File(path).toPath());
                 return Base64.getEncoder().encodeToString(data);
             } catch (Exception e) { return ""; }
+        }
+
+        // URL에서 파일 다운로드 (CORS 없이 Android 네이티브로)
+        @JavascriptInterface
+        public String fetchUrl(String urlStr) {
+            try {
+                java.net.URL url = new java.net.URL(urlStr);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 HyunJangCam/1.0");
+                int code = conn.getResponseCode();
+                if (code != 200) return "error:HTTP " + code;
+                java.io.InputStream is = conn.getInputStream();
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192]; int n;
+                while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+                is.close();
+                // KMZ는 base64로, 나머지는 텍스트로 반환
+                String ct = conn.getContentType() != null ? conn.getContentType() : "";
+                boolean isBinary = ct.contains("zip") || ct.contains("octet") ||
+                    urlStr.toLowerCase().contains(".kmz");
+                if (isBinary) return "base64:" + Base64.getEncoder().encodeToString(baos.toByteArray());
+                return "text:" + baos.toString("UTF-8");
+            } catch (Exception e) { return "error:" + e.getMessage(); }
         }
 
         private void uiToast(String msg) {
