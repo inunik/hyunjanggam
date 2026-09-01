@@ -532,14 +532,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         </div>
         <button class="close-btn" onclick="cancelLayerProj()">✕</button>
       </div>
-      <!-- SHP 파일 상태 (SHP 선택 시만 표시) -->
-      <div id="shp-status-row" style="display:none;padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--dim);margin-bottom:6px">SHP 파일 세트 상태</div>
-        <div style="font-family:monospace;font-size:12px;color:var(--gps)" id="shp-file-status"></div>
-        <button class="add-btn-outline" style="width:100%;margin-top:8px;font-size:12px" onclick="addShpCompanionFiles()">
-          📎 .dbf / .prj 파일 추가 선택
-        </button>
-      </div>
       <div class="panel-body" id="layer-proj-list"></div>
       <div class="add-row">
         <button class="add-btn-outline" onclick="openNewProjFromLayer()">+ 새 프로젝트 추가</button>
@@ -615,10 +607,8 @@ async function loadLibs(){
   await loadScript('leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js');
   await loadScript('jszip.min.js','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
   await loadScript('shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
-  // proj4: SHP 한국 좌표계 변환용
   await loadScript('proj4.js','https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js');
-  if(typeof proj4 !== 'undefined'){
-    // 한국 주요 좌표계 등록 (SHP 파일 자동 변환)
+  if(typeof proj4!=='undefined'){
     proj4.defs('EPSG:5174','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-115.80,474.99,674.11,1.16,-2.31,-1.63,6.43 +units=m +no_defs');
     proj4.defs('EPSG:5179','+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9999 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs');
     proj4.defs('EPSG:5186','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs');
@@ -1723,76 +1713,38 @@ async function toggleProjectLayers(projEncoded,visible){
 
 // ===== 파일 불러오기 =====
 // base64 → ArrayBuffer 변환
-// ===== SHP 좌표계 변환 (한국 좌표계 → WGS84) =====
-async function transformSHPCoords(geojson, prjBuf){
+// SHP 한국 좌표계 → WGS84 변환
+function fixShpCoords(geojson,prjBuf){
   if(!prjBuf||typeof proj4==='undefined')return geojson;
   try{
-    const prjText=new TextDecoder().decode(prjBuf);
-    // 이미 WGS84면 변환 불필요
-    if(prjText.includes('GCS_WGS_1984')||prjText.includes('GEOGCS["GCS_WGS_1984'))return geojson;
-    // 좌표가 위경도 범위 내면 변환 불필요 (첫 좌표 체크)
-    const first=geojson.features?.[0]?.geometry?.coordinates;
-    if(first){
-      const c=Array.isArray(first[0])?Array.isArray(first[0][0])?first[0][0]:first[0]:first;
-      if(Math.abs(c[0])<=180&&Math.abs(c[1])<=90)return geojson; // 이미 WGS84
+    const prj=new TextDecoder().decode(prjBuf);
+    // 이미 WGS84면 패스
+    if(prj.includes('GCS_WGS_1984'))return geojson;
+    // 첫 좌표 확인 - 이미 위경도 범위면 패스
+    const f0=geojson.features?.[0]?.geometry?.coordinates;
+    if(f0){
+      const c=Array.isArray(f0[0])?(Array.isArray(f0[0][0])?f0[0][0]:f0[0]):f0;
+      if(Math.abs(c[0])<=180&&Math.abs(c[1])<=90)return geojson;
     }
-    // 소스 투영 결정
-    let srcProj;
-    try{
-      srcProj=proj4(prjText);
-    }catch(e){
-      // PRJ 파싱 실패 시 내용으로 추측
-      if(prjText.includes('Korea_2000')||prjText.includes('GRS_1980')){
-        if(prjText.includes('127.5'))srcProj=proj4('EPSG:5179');
-        else if(prjText.includes('129'))srcProj=proj4('EPSG:5181');
-        else if(prjText.includes('125'))srcProj=proj4('EPSG:5185');
-        else srcProj=proj4('EPSG:5186');
-      }else if(prjText.includes('Bessel')||prjText.includes('bessel')){
-        if(prjText.includes('129'))srcProj=proj4('EPSG:5181');
-        else srcProj=proj4('EPSG:5174');
-      }else return geojson;
+    // 투영 감지
+    let src;
+    try{src=proj4(prj);}
+    catch(e){
+      if(prj.includes('127.5'))src=proj4('EPSG:5179');
+      else if(prj.includes('Korea_2000')||prj.includes('GRS_1980'))src=proj4('EPSG:5186');
+      else if(prj.includes('129'))src=proj4('EPSG:5181');
+      else if(prj.includes('125'))src=proj4('EPSG:5185');
+      else src=proj4('EPSG:5174');
     }
-    // 좌표 변환
-    const wgs84=proj4('EPSG:4326');
-    const xf=coords=>{
-      if(!Array.isArray(coords[0]))
-        return proj4(srcProj,wgs84,[coords[0],coords[1]]);
-      return coords.map(xf);
-    };
-    const xfGeom=g=>{if(!g)return g;return{...g,coordinates:xf(g.coordinates)};};
-    const result={...geojson,
-      features:geojson.features.map(f=>({...f,geometry:xfGeom(f.geometry)}))};
-    toast('✅ 한국 좌표계 → WGS84 변환 완료');
-    return result;
-  }catch(e){console.error('좌표 변환 실패:',e);return geojson;}
+    const wgs=proj4('EPSG:4326');
+    const xc=c=>{if(!Array.isArray(c[0]))return proj4(src,wgs,[c[0],c[1]]);return c.map(xc);};
+    const xg=g=>g?{...g,coordinates:xc(g.coordinates)}:g;
+    toast('✅ 한국 좌표계 변환 완료');
+    return{...geojson,features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)}))};
+  }catch(e){console.error('좌표변환실패',e);return geojson;}
 }
 
-// ===== SHP 파일 추가 선택 (2단계) =====
-// shp만 선택했을 때 dbf/prj 추가 선택 허용
-let pendingShpBase=null;
-
-function addShpCompanionFiles(){
-  const inp=document.createElement('input');
-  inp.type='file';inp.multiple=true;inp.accept='*/*';
-  inp.onchange=async(e)=>{
-    const extra=[...e.target.files];
-    if(!extra.length||!pendingFile?._shpMulti)return;
-    const dbfFile=extra.find(f=>f.name.toLowerCase().endsWith('.dbf'));
-    const prjFile=extra.find(f=>f.name.toLowerCase().endsWith('.prj'));
-    const cpgFile=extra.find(f=>f.name.toLowerCase().endsWith('.cpg'));
-    if(dbfFile)pendingFile.dbfBuf=await dbfFile.arrayBuffer();
-    if(prjFile)pendingFile.prjBuf=await prjFile.arrayBuffer();
-    if(cpgFile)pendingFile.cpgLbl=normalizeCpgLabel(await cpgFile.text());
-    // 상태 업데이트
-    const el=document.getElementById('shp-file-status');
-    if(el){
-      const f=pendingFile;
-      el.textContent=`shp ✅  dbf ${f.dbfBuf?'✅':'❌ 없음'}  prj ${f.prjBuf?'✅':'❌ 없음 (좌표 오류 가능)'}`;
-    }
-    toast('✅ 파일 추가됨');
-  };
-  inp.click();
-}
+function b64ToArrayBuffer(b64){
   const bin=atob(b64);
   const buf=new ArrayBuffer(bin.length);
   const view=new Uint8Array(buf);
@@ -1938,13 +1890,6 @@ async function onFileSelected(e){
     const cpgLbl=cpgFile?normalizeCpgLabel(await cpgFile.text()):'';
     pendingFile={_shpMulti:true,name,shpBuf,dbfBuf,prjBuf,cpgLbl};
     document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
-    // .prj 없으면 경고 + 추가 선택 안내
-    if(!prjBuf||!dbfBuf){
-      const missing=[];
-      if(!dbfBuf)missing.push('.dbf');
-      if(!prjBuf)missing.push('.prj (좌표계)');
-      toast(`⚠️ ${missing.join(', ')} 없음 → 파일 추가 버튼으로 선택해주세요`);
-    }
   }else{
     pendingFile=files[0];
     document.getElementById('layer-panel-fname').textContent='📄 '+files[0].name;
@@ -1954,16 +1899,6 @@ async function onFileSelected(e){
 
 async function openLayerProjPanel(){
   document.getElementById('layer-proj-panel').classList.add('open');
-  // SHP 파일이면 상태 표시
-  const statusRow=document.getElementById('shp-status-row');
-  const statusEl=document.getElementById('shp-file-status');
-  if(pendingFile?._shpMulti&&statusRow&&statusEl){
-    statusRow.style.display='block';
-    const f=pendingFile;
-    statusEl.textContent=`shp ✅  dbf ${f.dbfBuf?'✅':'❌ 없음'}  prj ${f.prjBuf?'✅':'❌ 없음 (좌표 오류 가능)'}`;
-  }else if(statusRow){
-    statusRow.style.display='none';
-  }
   await renderLayerProjList();
 }
 function cancelLayerProj(){pendingFile=null;document.getElementById('layer-proj-panel').classList.remove('open');}
@@ -2013,8 +1948,7 @@ async function loadLayerFile(file,projectName){
       else toast('⚠️ .prj 없음 - 좌표계를 몰라 위치가 틀릴 수 있어요');
       if(file.cpgLbl)shpObj.cpg=file.cpgLbl;
       geojson=await shp(shpObj);
-      // 한국 좌표계 변환 (북극 문제 해결)
-      if(file.prjBuf) geojson=await transformSHPCoords(geojson,file.prjBuf);
+      if(file.prjBuf)geojson=fixShpCoords(geojson,file.prjBuf);
     }else if(file.name.toLowerCase().endsWith('.kmz')){
       displayName=file.name.replace(/\.kmz$/i,'');
       const zip=await JSZip.loadAsync(await file.arrayBuffer());
