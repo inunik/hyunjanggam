@@ -378,11 +378,13 @@ public class MainActivity extends AppCompatActivity {
                 if (n.endsWith(".qmd") || n.endsWith(".sbx") || n.endsWith(".sbn")) continue;
                 // .cpg는 포함: JS에서 한글 인코딩(cp949) 감지에 사용
                 String ext = n.contains(".") ? n.substring(n.lastIndexOf(".")+1) : "";
-                JSONObject o = new JSONObject();
-                o.put("name", f.getName());
-                o.put("path", f.getAbsolutePath());
-                o.put("ext", ext);
-                arr.put(o);
+                try {
+                    JSONObject o = new JSONObject();
+                    o.put("name", f.getName());
+                    o.put("path", f.getAbsolutePath());
+                    o.put("ext", ext);
+                    arr.put(o);
+                } catch (Exception e) { continue; }
             }
         }
 
