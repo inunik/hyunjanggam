@@ -223,6 +223,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   background:var(--surf2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .symbol-btn.on{border-color:var(--accent);background:var(--accent-dim)}
 .symbol-btn:active{opacity:.7}
+.drag-handle{cursor:grab;color:var(--dim);padding:0 5px;font-size:18px;user-select:none;touch-action:none}
+.layer-item.drag-over{border-top:2px solid var(--accent) !important;margin-top:-2px}
+.layer-item.dragging{opacity:.35;background:var(--surf2)}
 
 /* ── 내보내기 카드 ── */
 .exp-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
@@ -349,12 +352,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="set-card" style="margin-bottom:12px">
       <div id="settings-layer-list" style="margin-bottom:10px"></div>
       <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
-        onclick="scanAllProjectLayers()">
-        🔍 폴더에서 파일 자동 읽기 (SHP·KML·KMZ)
-      </button>
-      <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
         onclick="document.getElementById('file-inp').click()">
-        📁 파일 직접 선택
+        📁 파일 선택 (SHP · KML · KMZ · GeoJSON)
+      </button>
+      <button class="add-btn-outline" style="width:100%;margin-bottom:8px;border-color:var(--gps);color:var(--gps)"
+        onclick="manualScanFolders()">
+        🔍 폴더에서 파일 읽기 (USB로 넣은 파일)
       </button>
       <div class="url-input-row">
         <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
@@ -543,7 +546,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
 
     <input type="file" id="file-inp"
-      accept=".kml,.kmz,.geojson,.json,.zip,.shp,.dbf,.prj,.shx"
+      accept="*/*"
       multiple style="display:none" onchange="onFileSelected(event)">
     <input type="file" id="kmz-import-inp" accept=".kmz" style="display:none" onchange="onImportKMZ(event)">
   </div>
@@ -1234,6 +1237,23 @@ function addLeafletLayer(l){
   if(l.visible)lf.addTo(map);
 }
 
+// ===== 스캔 블랙리스트 (삭제한 레이어 재등록 방지) =====
+function addScanBlacklist(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  if(!bl[projName])bl[projName]=[];
+  if(!bl[projName].includes(layerName))bl[projName].push(layerName);
+  localStorage.setItem('scanBL',JSON.stringify(bl));
+}
+function isScanBlacklisted(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  return (bl[projName]||[]).includes(layerName);
+}
+function removeScanBlacklist(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  if(bl[projName])bl[projName]=bl[projName].filter(n=>n!==layerName);
+  localStorage.setItem('scanBL',JSON.stringify(bl));
+}
+
 async function toggleLayer(idx){
   const l=allLayers[idx];if(!l)return;
   const newVis=await toggleLayerData(l);
@@ -1247,8 +1267,10 @@ async function deleteLayer(idx){
   const l=allLayers[idx];if(!l)return;
   const key=l.geojsonPath||l.id;
   if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
+  // 스캔 블랙리스트에 등록 (폴더 스캔 시 재생성 방지)
+  addScanBlacklist(l.projectName||l.project||'미분류', l.name);
   await deleteLayerData(l);
-  renderSettingsLayerList();toast('레이어 삭제됨');
+  renderSettingsLayerList();toast('레이어 삭제됨 (재스캔 시 제외됨)');
 }
 
 // 레이어 색상 변경
@@ -1305,10 +1327,9 @@ async function openSettings(){
   const cur=localStorage.getItem('map_type')||'vworld';
   document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
   const curBtn=document.getElementById('mtype-'+cur);if(curBtn)curBtn.classList.add('on');
-  await loadProjects();await loadAllPhotos();await loadAllLayers();
-
-  // USB로 넣은 파일 자동 스캔
-  if(IS_APK) autoScanFolders();
+  await loadProjects();await loadAllPhotos();
+  // allLayers는 메모리 유지 (순서 보존) - 처음 로드할 때만 읽음
+  if(!allLayers.length) await loadAllLayers();
 
   renderSettingsLayerList();
   renderExportInSettings();
@@ -1382,11 +1403,18 @@ function renderSettingsLayerList(){
       const eKey='lx'+idx;
       const isExp=expandedLayers.has(eKey);
       const sym=l.symbol||'circle';
-      html+=`<div class="layer-item" style="padding-left:8px;cursor:pointer" onclick="toggleLayerExpand('${eKey}')">
+      html+=`<div class="layer-item" style="padding-left:4px;cursor:pointer"
+        onclick="toggleLayerExpand('${eKey}')"
+        ondragover="event.preventDefault();layerDragOver(event,${idx})"
+        ondrop="event.preventDefault();event.stopPropagation();layerDrop(${idx})">
+        <div class="drag-handle"
+          draggable="true"
+          ondragstart="event.stopPropagation();layerDragStart(event,${idx})"
+          ondragend="event.stopPropagation();layerDragEnd(event)"
+          onclick="event.stopPropagation()"
+          title="길게 눌러 이동">⠿</div>
         <div style="flex-shrink:0">${makeSymbolHtml(l.color,sym,20)}</div>
         <div class="layer-info"><div class="layer-name">${l.name}</div></div>
-        <button class="ord-btn" ${idx===0?'disabled':''} onclick="event.stopPropagation();moveLayer(${idx},-1)">▲</button>
-        <button class="ord-btn" ${idx===allLayers.length-1?'disabled':''} onclick="event.stopPropagation();moveLayer(${idx},1)">▼</button>
         <button class="mfab" style="width:28px;height:28px;border-radius:7px;font-size:13px" onclick="event.stopPropagation();zoomToLayer(${idx})">🔍</button>
         <button class="toggle-btn ${l.visible?'on':'off'}" onclick="event.stopPropagation();toggleLayer(${idx})"></button>
         <button class="del-btn" onclick="event.stopPropagation();deleteLayer(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
@@ -1408,6 +1436,49 @@ function toggleLayerExpand(eKey){
   if(expandedLayers.has(eKey))expandedLayers.delete(eKey);
   else expandedLayers.add(eKey);
   renderSettingsLayerList();
+}
+
+// ===== 레이어 드래그로 순서 변경 =====
+let dragSrcIdx=null;
+
+function layerDragStart(e,idx){
+  dragSrcIdx=idx;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',String(idx));
+  setTimeout(()=>{
+    const items=document.querySelectorAll('#settings-layer-list .layer-item');
+    if(items[idx])items[idx].classList.add('dragging');
+  },0);
+}
+
+function layerDragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  // 드래그 위치 표시
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach((el,i)=>{
+    el.classList.toggle('drag-over',i===idx&&idx!==dragSrcIdx);
+  });
+}
+
+async function layerDrop(idx){
+  if(dragSrcIdx===null||dragSrcIdx===idx){layerDragEnd();return;}
+  const moved=allLayers.splice(dragSrcIdx,1)[0];
+  const insertAt=idx>dragSrcIdx?idx-1:idx;
+  allLayers.splice(insertAt,0,moved);
+  allLayers.forEach((l,i)=>l.order=i);
+  saveLayerOrder();
+  // DB 업데이트
+  if(!IS_APK)for(const l of allLayers)if(l.id)await dbPut('layers',{...l});
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+  dragSrcIdx=null;
+}
+
+function layerDragEnd(e){
+  dragSrcIdx=null;
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>{
+    el.classList.remove('dragging','drag-over');
+  });
 }
 
 // 프로젝트 사진 + 레이어 전체 토글
@@ -1488,29 +1559,25 @@ function b64ToArrayBuffer(b64){
   return buf;
 }
 
-// 자동 스캔 (설정 열 때 조용히 실행)
-async function autoScanFolders(){
+// 수동 스캔 (버튼 눌렀을 때만)
+async function manualScanFolders(){
+  if(!IS_APK){toast('APK에서만 사용 가능해요');return;}
+  toast('폴더 스캔 중...');
+  await loadProjects();
   let total=0;
   for(const p of projects){
     const added=await scanProjectLayers(p.name);
     total+=added;
   }
-  if(total>0){
-    await loadAllLayers();
-    renderSettingsLayerList();
-    if(map)loadLayersToMap();
-    toast(`📂 USB 파일 ${total}개 자동으로 읽었어요`);
-  }
+  await loadAllLayers();
+  renderSettingsLayerList();
+  if(total>0) toast(`✅ ${total}개 새 파일 읽었어요`);
+  else toast('새 파일 없음 (이미 읽었거나 파일 없음)');
 }
 
-// 수동 스캔 버튼용
-async function scanAllProjectLayers(){
-  if(!IS_APK){toast('APK에서만 사용 가능해요');return;}
-  toast('스캔 중...');
-  await loadProjects();
-  await autoScanFolders();
-  if(document.getElementById('settings-panel').classList.contains('open'))
-    renderSettingsLayerList();
+// 자동 스캔 (내부용 - openSettings에서는 더 이상 호출 안 함)
+async function autoScanFolders(){
+  for(const p of projects){await scanProjectLayers(p.name);}
 }
 
 async function scanProjectLayers(projName){
@@ -1529,6 +1596,7 @@ async function scanProjectLayers(projName){
     let added=0;
     for(const [name,files] of Object.entries(groups)){
       if(existing.includes(name))continue; // 이미 처리됨
+      if(isScanBlacklisted(projName,name))continue; // 삭제된 레이어
 
       let geojson;
       try{
@@ -1687,6 +1755,7 @@ async function loadLayerFile(file,projectName){
     // 단일 레이어 처리
     const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
     const name=displayName||file.name.replace(/\.[^.]+$/,'');
+    removeScanBlacklist(projectName, name); // 수동 추가 시 블랙리스트 제거
     await saveLayerData(projectName,name,geojson,color,true);
     const newLayer=allLayers[allLayers.length-1];
     if(newLayer)addLeafletLayer(newLayer);
