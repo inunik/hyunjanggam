@@ -299,6 +299,10 @@ public class MainActivity extends AppCompatActivity {
                         JSONObject m = new JSONObject(readFileContent(mf));
                         o.put("color",   m.optString("color",   "#4CAF50"));
                         o.put("visible", m.optBoolean("visible", true));
+                        o.put("symbol",  m.optString("symbol",  "circle"));
+                        o.put("order",   m.optInt("order", 0));
+                        if (m.has("srcFile") && m.optString("srcFile", "").length() > 0)
+                            o.put("srcFile", m.optString("srcFile", ""));
                     } else { o.put("color", "#4CAF50"); o.put("visible", true); }
                     arr.put(o);
                 }
@@ -345,32 +349,41 @@ public class MainActivity extends AppCompatActivity {
         public String listRawLayerFiles(String projectName) {
             try {
                 JSONArray arr = new JSONArray();
-                // 프로젝트 루트와 레이어 폴더 둘 다 스캔
+                // 프로젝트 루트부터 하위 폴더까지 재귀 스캔 (USB로 폴더째 넣은 파일 지원)
                 File projDir = new File(baseDir, projectName);
-                File layerDir = new File(projDir, "레이어");
-                File[] dirs = {projDir, layerDir};
-                for (File dir : dirs) {
-                    if (!dir.exists()) continue;
-                    File[] files = dir.listFiles();
-                    if (files == null) continue;
-                    for (File f : files) {
-                        if (f.isDirectory()) continue;
-                        String n = f.getName().toLowerCase();
-                        // 불필요한 파일 제외
-                        if (n.equals("project.json")) continue;
-                        if (n.endsWith(".meta.json")) continue;
-                        if (n.endsWith(".cpg") || n.endsWith(".qmd") || n.endsWith(".sbx") || n.endsWith(".sbn")) continue;
-                        // 처리 가능한 파일만
-                        String ext = n.contains(".") ? n.substring(n.lastIndexOf(".")+1) : "";
-                        JSONObject o = new JSONObject();
-                        o.put("name", f.getName());
-                        o.put("path", f.getAbsolutePath());
-                        o.put("ext", ext);
-                        arr.put(o);
-                    }
-                }
+                if (!projDir.exists()) return "[]";
+                collectLayerFiles(projDir, 0, arr);
                 return arr.toString();
             } catch (Exception e) { return "[]"; }
+        }
+
+        // 레이어 파일 재귀 수집 (최대 4단계 깊이)
+        private void collectLayerFiles(File dir, int depth, JSONArray arr) {
+            if (depth > 3) return;               // 무한 방지: 4단계까지
+            File[] files = dir.listFiles();
+            if (files == null) return;
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    String dn = f.getName();
+                    // 앱이 만든 폴더/시스템 폴더는 건너뜀
+                    // (사진=촬영본, 내보내기=내보낸 파일, 레이어=앱이 변환한 복사본 - 재스캔 시 원본처럼 잡히는 것 방지)
+                    if (dn.equals("사진") || dn.equals("내보내기") || dn.equals("레이어") || dn.startsWith(".")) continue;
+                    collectLayerFiles(f, depth + 1, arr);
+                    continue;
+                }
+                String n = f.getName().toLowerCase();
+                if (n.equals("project.json")) continue;
+                if (n.endsWith(".meta.json")) continue;
+                if (n.endsWith(".jpg") || n.endsWith(".jpeg")) continue;
+                if (n.endsWith(".qmd") || n.endsWith(".sbx") || n.endsWith(".sbn")) continue;
+                // .cpg는 포함: JS에서 한글 인코딩(cp949) 감지에 사용
+                String ext = n.contains(".") ? n.substring(n.lastIndexOf(".")+1) : "";
+                JSONObject o = new JSONObject();
+                o.put("name", f.getName());
+                o.put("path", f.getAbsolutePath());
+                o.put("ext", ext);
+                arr.put(o);
+            }
         }
 
         @JavascriptInterface

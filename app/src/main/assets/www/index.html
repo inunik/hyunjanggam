@@ -223,6 +223,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   background:var(--surf2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
 .symbol-btn.on{border-color:var(--accent);background:var(--accent-dim)}
 .symbol-btn:active{opacity:.7}
+.mv-btn{flex:1;padding:8px 0;background:var(--surf2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.mv-btn:active{background:var(--accent-dim);border-color:var(--accent)}
+.layer-drag-ghost{position:fixed;z-index:9999;pointer-events:none;display:none;
+  background:var(--surf2);color:var(--text);border:1px solid var(--accent);border-radius:8px;
+  padding:10px 12px;font-size:13px;font-weight:600;box-shadow:0 10px 28px rgba(0,0,0,.55);opacity:.95}
 .drag-handle{cursor:grab;color:var(--dim);padding:0 5px;font-size:18px;user-select:none;touch-action:none}
 .layer-item.drag-over{border-top:2px solid var(--accent) !important;margin-top:-2px}
 .layer-item.dragging{opacity:.35;background:var(--surf2)}
@@ -546,9 +552,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     </div>
 
     <input type="file" id="file-inp"
-      accept="*/*"
+      accept=".shp,.shx,.dbf,.prj,.cpg,.kml,.kmz,.zip,.geojson,.json"
       multiple style="display:none" onchange="onFileSelected(event)">
     <input type="file" id="kmz-import-inp" accept=".kmz" style="display:none" onchange="onImportKMZ(event)">
+    <div id="layer-drag-ghost" class="layer-drag-ghost"></div>
   </div>
 
 </div>
@@ -793,23 +800,28 @@ function applyStoredLayerOrder(){
   }
 }
 
-async function saveLayerData(projectName,name,geojson,color,visible,symbol='circle'){
+async function saveLayerData(projectName,name,geojson,color,visible,symbol='circle',srcFile=''){
   const order=allLayers.length;
-  const meta={color,visible,project:projectName,symbol,order};
+  const meta={color,visible,project:projectName,symbol,order,srcFile};
   if(IS_APK){
     AndroidBridge.saveLayer(projectName,name,JSON.stringify(geojson),JSON.stringify(meta));
   }else{
-    await dbAdd('layers',{name,project:projectName,color,geojson,visible,symbol,order});
+    await dbAdd('layers',{name,project:projectName,color,geojson,visible,symbol,order,srcFile});
   }
   await loadAllLayers();
+}
+
+// 레이어 메타 JSON 생성 (srcFile 등 전체 필드 포함 - 재스캔 중복 방지에 필수)
+function buildLayerMeta(l){
+  return JSON.stringify({color:l.color,visible:l.visible,project:l.projectName||l.project||'',
+    symbol:l.symbol||'circle',order:l.order||0,srcFile:l.srcFile||''});
 }
 
 async function toggleLayerData(layer){
   const newVisible=!layer.visible;
   layer.visible=newVisible;
   if(IS_APK){
-    AndroidBridge.updateLayerMeta(layer.geojsonPath,
-      JSON.stringify({color:layer.color,visible:newVisible,project:layer.projectName,symbol:layer.symbol||'circle',order:layer.order||0}));
+    AndroidBridge.updateLayerMeta(layer.geojsonPath,buildLayerMeta(layer));
   }else{
     await dbPut('layers',{...layer,visible:newVisible});
   }
@@ -1267,8 +1279,9 @@ async function deleteLayer(idx){
   const l=allLayers[idx];if(!l)return;
   const key=l.geojsonPath||l.id;
   if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
-  // 스캔 블랙리스트에 등록 (폴더 스캔 시 재생성 방지)
-  addScanBlacklist(l.projectName||l.project||'미분류', l.name);
+  // 스캔 블랙리스트에 등록 (폴더 재스캔 시 부활 방지)
+  // srcFile: 이 레이어를 만든 원본 파일(.kmz/.kml/.shp 기본이름) → 원본 단위로 차단
+  addScanBlacklist(l.projectName||l.project||'미분류', l.srcFile||l.name);
   await deleteLayerData(l);
   renderSettingsLayerList();toast('레이어 삭제됨 (재스캔 시 제외됨)');
 }
@@ -1278,7 +1291,7 @@ async function setLayerColor(idx,color){
   const l=allLayers[idx];if(!l)return;
   l.color=color;
   if(IS_APK&&l.geojsonPath)
-    AndroidBridge.updateLayerMeta(l.geojsonPath,JSON.stringify({color,visible:l.visible,project:l.projectName,symbol:l.symbol||'circle',order:l.order||0}));
+    AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
   else if(!IS_APK) await dbPut('layers',{...l,color});
   // 지도 레이어 다시 그리기
   addLeafletLayer(l);
@@ -1290,7 +1303,7 @@ async function setLayerSymbol(idx,symbol){
   const l=allLayers[idx];if(!l)return;
   l.symbol=symbol;
   if(IS_APK&&l.geojsonPath)
-    AndroidBridge.updateLayerMeta(l.geojsonPath,JSON.stringify({color:l.color,visible:l.visible,project:l.projectName,symbol,order:l.order||0}));
+    AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
   else if(!IS_APK) await dbPut('layers',{...l,symbol});
   addLeafletLayer(l);
   renderSettingsLayerList();
@@ -1403,7 +1416,7 @@ function renderSettingsLayerList(){
       const eKey='lx'+idx;
       const isExp=expandedLayers.has(eKey);
       const sym=l.symbol||'circle';
-      html+=`<div class="layer-item" style="padding-left:4px;cursor:pointer"
+      html+=`<div class="layer-item" style="padding-left:4px;cursor:pointer" data-lyr="${idx}"
         onclick="toggleLayerExpand('${eKey}')"
         ondragover="event.preventDefault();layerDragOver(event,${idx})"
         ondrop="event.preventDefault();event.stopPropagation();layerDrop(${idx})">
@@ -1412,6 +1425,10 @@ function renderSettingsLayerList(){
           ondragstart="event.stopPropagation();layerDragStart(event,${idx})"
           ondragend="event.stopPropagation();layerDragEnd(event)"
           onclick="event.stopPropagation()"
+          ontouchstart="layerTouchStart(event,${idx})"
+          ontouchmove="layerTouchMove(event)"
+          ontouchend="layerTouchEnd(event)"
+          ontouchcancel="layerTouchCancel(event)"
           title="길게 눌러 이동">⠿</div>
         <div style="flex-shrink:0">${makeSymbolHtml(l.color,sym,20)}</div>
         <div class="layer-info"><div class="layer-name">${l.name}</div></div>
@@ -1419,6 +1436,10 @@ function renderSettingsLayerList(){
         <button class="toggle-btn ${l.visible?'on':'off'}" onclick="event.stopPropagation();toggleLayer(${idx})"></button>
         <button class="del-btn" onclick="event.stopPropagation();deleteLayer(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
       <div class="layer-expand ${isExp?'show':''}" id="${eKey}">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="mv-btn" onclick="event.stopPropagation();moveLayer(${idx},-1)">▲ 위로</button>
+          <button class="mv-btn" onclick="event.stopPropagation();moveLayer(${idx},1)">▼ 아래로</button>
+        </div>
         <div class="expand-label">색상</div>
         <div class="color-grid">${COLOR_PALETTE.map(c=>`<div class="color-chip ${l.color===c?'on':''}" style="background:${c}" onclick="setLayerColor(${idx},'${c}')"></div>`).join('')}</div>
         <div class="expand-label" style="margin-top:8px">아이콘</div>
@@ -1469,6 +1490,7 @@ async function layerDrop(idx){
   saveLayerOrder();
   // DB 업데이트
   if(!IS_APK)for(const l of allLayers)if(l.id)await dbPut('layers',{...l});
+  persistAllLayerMeta();
   reapplyLayerOrder();
   renderSettingsLayerList();
   dragSrcIdx=null;
@@ -1479,6 +1501,136 @@ function layerDragEnd(e){
   document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>{
     el.classList.remove('dragging','drag-over');
   });
+}
+
+// ===== 터치 드래그 (모바일) =====
+// HTML5 드래그(draggable)는 안드로이드 WebView 터치에서 동작하지 않아
+// 길게 누르기(long-press) → 손가락 이동 → 놓기로 직접 구현
+let touchDrag=null; // {idx, timer, startX, startY, active, ghost, rowEl}
+const TOUCH_DRAG_DELAY=350; // ms 길게 누르기 판정
+
+function layerTouchStart(e,idx){
+  if(touchDrag)return;
+  const t=e.changedTouches[0];
+  touchDrag={idx,timer:null,startX:t.clientX,startY:t.clientY,curX:t.clientX,curY:t.clientY,active:false,rowEl:e.currentTarget};
+  touchDrag.timer=setTimeout(startTouchDrag,TOUCH_DRAG_DELAY);
+}
+
+function startTouchDrag(){
+  if(!touchDrag||touchDrag.active)return;
+  touchDrag.active=true;
+  const row=touchDrag.rowEl;
+  const l=allLayers[touchDrag.idx];
+  if(navigator.vibrate)try{navigator.vibrate(15);}catch(v){}
+  // 원래 행 반투명 처리
+  if(row)row.classList.add('dragging');
+  // 고스트(손가락 따라다니는 미리보기) 생성
+  const ghost=document.getElementById('layer-drag-ghost');
+  if(ghost){
+    ghost.textContent='⠿ '+(l?l.name:'');
+    ghost.style.display='block';
+    ghost.style.left=(touchDrag.curX+12)+'px';
+    ghost.style.top=(touchDrag.curY-34)+'px';
+    touchDrag.ghost=ghost;
+  }
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>{
+    if(el!==row)el.classList.remove('drag-over');
+  });
+}
+
+function layerTouchMove(e){
+  if(!touchDrag)return;
+  const t=e.changedTouches[0];
+  touchDrag.curX=t.clientX;touchDrag.curY=t.clientY;
+  if(!touchDrag.active){
+    // 길게 누르기 전 살짝 움직이면 취소 (스크롤과 구분)
+    const dx=Math.abs(t.clientX-touchDrag.startX);
+    const dy=Math.abs(t.clientY-touchDrag.startY);
+    if(dx>10||dy>10){
+      if(touchDrag.timer){clearTimeout(touchDrag.timer);touchDrag.timer=null;}
+      touchDrag=null;
+      return;
+    }
+    e.preventDefault(); // 보류 중 스크롤 방지
+    return;
+  }
+  e.preventDefault(); // 스크롤 방지 (드래그 중)
+  // 고스트 이동
+  if(touchDrag.ghost){
+    touchDrag.ghost.style.left=(t.clientX+12)+'px';
+    touchDrag.ghost.style.top=(t.clientY-34)+'px';
+  }
+  // 어떤 행 위인지 표시 + 가장자리에서 패널 자동스크롤
+  const rows=[...document.querySelectorAll('#settings-layer-list .layer-item[data-lyr]')];
+  let hit=null;
+  for(const el of rows){
+    const r=el.getBoundingClientRect();
+    if(t.clientY>=r.top&&t.clientY<=r.bottom){hit=el;break;}
+  }
+  rows.forEach(el=>el.classList.toggle('drag-over',el===hit&&el!==touchDrag.rowEl));
+  // 패널 자동스크롤 (드래그 중 화면 가장자리 근처에서)
+  const scroller=touchDrag.rowEl?touchDrag.rowEl.closest('.settings-panel'):null;
+  const sc=scroller?scroller.querySelector('div[style*="overflow-y"]'):null;
+  if(sc){
+    const sr=sc.getBoundingClientRect();
+    if(t.clientY<sr.top+44)sc.scrollTop-=10;
+    else if(t.clientY>sr.bottom-44)sc.scrollTop+=10;
+  }
+}
+
+async function layerTouchEnd(e){
+  if(!touchDrag)return;
+  const td=touchDrag;touchDrag=null;
+  if(td.timer){clearTimeout(td.timer);td.timer=null;}
+  if(td.ghost)td.ghost.style.display='none';
+  if(td.active)e.preventDefault(); // 드래그 판정 후 브라우저 합성 click 방지 (펼침 토글 오작동 방지)
+  const rows=[...document.querySelectorAll('#settings-layer-list .layer-item[data-lyr]')];
+  let hit=null;
+  if(td.active){
+    const t=e.changedTouches[0];
+    for(const el of rows){
+      const r=el.getBoundingClientRect();
+      if(t.clientY>=r.top&&t.clientY<=r.bottom){hit=el;break;}
+    }
+  }
+  rows.forEach(el=>el.classList.remove('dragging','drag-over'));
+  if(!td.active||!hit||hit===td.rowEl)return; // 그냥 탭이거나 제자리
+  const targetIdx=parseInt(hit.dataset.lyr,10);
+  if(isNaN(targetIdx)||targetIdx===td.idx)return;
+  // 순서 변경 (마우스 드롭과 동일한 로직)
+  const moved=allLayers.splice(td.idx,1)[0];
+  const insertAt=targetIdx>td.idx?targetIdx-1:targetIdx;
+  allLayers.splice(insertAt,0,moved);
+  allLayers.forEach((l,i)=>l.order=i);
+  saveLayerOrder();
+  if(!IS_APK){for(const l of allLayers)if(l.id)await dbPut('layers',{...l});}
+  persistAllLayerMeta();
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+  toast('↕ 레이어 순서 변경됨');
+}
+
+// 모든 레이어 메타를 저장소에 반영 (APK: meta.json / 웹: IndexedDB)
+function persistAllLayerMeta(){
+  if(IS_APK){
+    for(const l of allLayers){
+      if(!l.geojsonPath)continue;
+      AndroidBridge.updateLayerMeta(l.geojsonPath,
+        JSON.stringify({color:l.color,visible:l.visible,project:l.projectName||l.project||'',
+          symbol:l.symbol||'circle',order:l.order||0,srcFile:l.srcFile||''}));
+    }
+  }
+  // 웹(IndexedDB)은 비동기라 호출부에서 dbPut 처리 (layerDrop/layerTouchEnd 참조)
+}
+
+// 터치 취소 (브라우저가 스크롤 등으로 제어권을 가져간 경우) - 이동 없이 정리만
+function layerTouchCancel(){
+  if(!touchDrag)return;
+  const td=touchDrag;touchDrag=null;
+  if(td.timer){clearTimeout(td.timer);td.timer=null;}
+  if(td.ghost)td.ghost.style.display='none';
+  if(td.rowEl)td.rowEl.classList.remove('dragging');
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>el.classList.remove('drag-over'));
 }
 
 // 프로젝트 사진 + 레이어 전체 토글
@@ -1493,24 +1645,27 @@ async function toggleProjectAll(projEncoded,visible){
   await toggleProjectLayers(projEncoded,visible);
 }
 
-// ===== 레이어 순서 이동 =====
+// ===== 레이어 순서 이동 (확장 패널 ▲▼ 버튼) =====
 async function moveLayer(idx,dir){
-  const newIdx=idx+dir;
-  if(newIdx<0||newIdx>=allLayers.length)return;
+  if(idx<0||idx>=allLayers.length)return;
+  const projOf=l=>l.projectName||l.project||'미분류';
+  const proj=projOf(allLayers[idx]);
+  // 같은 프로젝트의 이웃 레이어를 찾아 스왑 (목록에 보이는 순서와 일치)
+  let j=idx+dir;
+  while(j>=0&&j<allLayers.length&&projOf(allLayers[j])!==proj)j+=dir;
+  if(j<0||j>=allLayers.length)return;
   const tmp=allLayers[idx];
-  allLayers[idx]=allLayers[newIdx];
-  allLayers[newIdx]=tmp;
+  allLayers[idx]=allLayers[j];
+  allLayers[j]=tmp;
   allLayers[idx].order=idx;
-  allLayers[newIdx].order=newIdx;
+  allLayers[j].order=j;
   if(IS_APK){
-    const la=allLayers[idx],lb=allLayers[newIdx];
-    if(la.geojsonPath)AndroidBridge.updateLayerMeta(la.geojsonPath,
-      JSON.stringify({color:la.color,visible:la.visible,project:la.projectName||la.project||'',symbol:la.symbol||'circle',order:idx}));
-    if(lb.geojsonPath)AndroidBridge.updateLayerMeta(lb.geojsonPath,
-      JSON.stringify({color:lb.color,visible:lb.visible,project:lb.projectName||lb.project||'',symbol:lb.symbol||'circle',order:newIdx}));
+    const la=allLayers[idx],lb=allLayers[j];
+    if(la.geojsonPath)AndroidBridge.updateLayerMeta(la.geojsonPath,buildLayerMeta(la));
+    if(lb.geojsonPath)AndroidBridge.updateLayerMeta(lb.geojsonPath,buildLayerMeta(lb));
   }else{
     await dbPut('layers',{...allLayers[idx],order:idx});
-    await dbPut('layers',{...allLayers[newIdx],order:newIdx});
+    await dbPut('layers',{...allLayers[j],order:j});
   }
   saveLayerOrder(); // localStorage에 순서 저장
   reapplyLayerOrder();
@@ -1537,8 +1692,7 @@ async function toggleProjectLayers(projEncoded,visible){
     if((l.projectName||l.project||'미분류')!==proj)continue;
     l.visible=visible;
     if(IS_APK&&l.geojsonPath){
-      AndroidBridge.updateLayerMeta(l.geojsonPath,
-        JSON.stringify({color:l.color,visible,project:l.projectName||l.project||'',symbol:l.symbol||'circle',order:l.order||0}));
+      AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
     }else if(!IS_APK){
       await dbPut('layers',{...l,visible});
     }
@@ -1570,6 +1724,12 @@ async function manualScanFolders(){
     total+=added;
   }
   await loadAllLayers();
+  // 새로 추가된 레이어를 지도에도 반영 (기존 것은 중복 방지)
+  allLayers.forEach(l=>{
+    const key=l.geojsonPath||l.id;
+    if(!leafletLayers[key])addLeafletLayer(l);
+  });
+  reapplyLayerOrder();
   renderSettingsLayerList();
   if(total>0) toast(`✅ ${total}개 새 파일 읽었어요`);
   else toast('새 파일 없음 (이미 읽었거나 파일 없음)');
@@ -1583,7 +1743,10 @@ async function autoScanFolders(){
 async function scanProjectLayers(projName){
   try{
     const rawFiles=JSON.parse(AndroidBridge.listRawLayerFiles(projName));
-    const existing=JSON.parse(AndroidBridge.listLayers(projName)).map(l=>l.name);
+    const existingLayers=JSON.parse(AndroidBridge.listLayers(projName));
+    // 중복 판단: 레이어 이름 + 원본 파일명(srcFile) 둘 다 확인
+    const existingNames=new Set(existingLayers.map(l=>l.name));
+    const existingSrc=new Set(existingLayers.map(l=>l.srcFile).filter(Boolean));
 
     // 파일을 기본이름으로 그룹핑
     const groups={};
@@ -1595,8 +1758,9 @@ async function scanProjectLayers(projName){
 
     let added=0;
     for(const [name,files] of Object.entries(groups)){
-      if(existing.includes(name))continue; // 이미 처리됨
-      if(isScanBlacklisted(projName,name))continue; // 삭제된 레이어
+      if(existingNames.has(name))continue; // 이미 처리됨 (같은 이름의 레이어 존재)
+      if(existingSrc.has(name))continue;   // 이 원본 파일에서 이미 레이어 생성됨
+      if(isScanBlacklisted(projName,name))continue; // 사용자가 삭제한 원본 파일
 
       let geojson;
       try{
@@ -1606,6 +1770,10 @@ async function scanProjectLayers(projName){
           const obj={shp:shpBuf};
           if(files.dbf)obj.dbf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.dbf));
           if(files.prj)obj.prj=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj));
+          if(files.cpg){
+            try{const cpg=normalizeCpgLabel(AndroidBridge.readText(files.cpg));if(cpg)obj.cpg=cpg;}catch(e2){}
+          }
+          if(!files.prj)toast(`⚠️ ${name}: .prj 없음 - 좌표계 미지정 시 위치가 틀릴 수 있어요`);
           geojson=await shp(obj);
         }else if(files.kmz){
           // KMZ 처리 (멀티레이어)
@@ -1616,9 +1784,13 @@ async function scanProjectLayers(projName){
             const kmlDom=new DOMParser().parseFromString(await kf.async('string'),'text/xml');
             const mls=kmlToMultiGeoJSON(kmlDom,name);
             if(mls.length>1){
-              for(const ml of mls){if(!ml.geojson.features.length)continue;
+              // 레이어별 중복/삭제이력 필터 (구버전 데이터: srcFile 없이 이름으로만 존재)
+              for(const ml of mls){
+                if(!ml.geojson.features.length)continue;
+                if(existingNames.has(ml.name)||existingSrc.has(name))continue;
+                if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
                 const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
-                await saveLayerData(projName,ml.name,ml.geojson,color,true);added++;}
+                await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
               continue;
             }
             geojson=mls[0]?.geojson;
@@ -1628,9 +1800,13 @@ async function scanProjectLayers(projName){
           const kmlDom=new DOMParser().parseFromString(AndroidBridge.readText(files.kml),'text/xml');
           const mls=kmlToMultiGeoJSON(kmlDom,name);
           if(mls.length>1){
-            for(const ml of mls){if(!ml.geojson.features.length)continue;
+            // 레이어별 중복/삭제이력 필터 (구버전 데이터: srcFile 없이 이름으로만 존재)
+            for(const ml of mls){
+              if(!ml.geojson.features.length)continue;
+              if(existingNames.has(ml.name)||existingSrc.has(name))continue;
+              if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
               const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
-              await saveLayerData(projName,ml.name,ml.geojson,color,true);added++;}
+              await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
             continue;
           }
           geojson=mls[0]?.geojson;
@@ -1641,7 +1817,7 @@ async function scanProjectLayers(projName){
 
         if(geojson){
           const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
-          await saveLayerData(projName,name,geojson,color,true);
+          await saveLayerData(projName,name,geojson,color,true,'circle',name);
           added++;
           toast(`📂 ${name} 읽는 중...`);
         }
@@ -1650,6 +1826,16 @@ async function scanProjectLayers(projName){
     return added;
   }catch(e){console.error('스캔 실패:',projName,e);return 0;}
 }
+// .cpg 인코딩 라벨 정규화 — 브라우저 TextDecoder는 'cp949' 라벨 미지원
+// ('euc-kr' 라벨이 인코딩 표준상 CP949 전체(한글 11,172자)를 해석함)
+function normalizeCpgLabel(raw){
+  const v=(raw||'').trim().toLowerCase();
+  if(!v||v==='utf-8')return '';
+  const KR=['cp949','ms949','949','windows-949','euc-kr','euckr','ksc5601',
+    'ks_c_5601-1987','ks_c_5601-1989','korean','cseuckr','csksc56011987','iso-ir-149'];
+  return KR.includes(v)?'euc-kr':v;
+}
+
 async function onFileSelected(e){
   const files=[...e.target.files];if(!files.length)return;
   e.target.value='';
@@ -1657,11 +1843,13 @@ async function onFileSelected(e){
   if(shpFile){
     const dbfFile=files.find(f=>f.name.toLowerCase().endsWith('.dbf'));
     const prjFile=files.find(f=>f.name.toLowerCase().endsWith('.prj'));
+    const cpgFile=files.find(f=>f.name.toLowerCase().endsWith('.cpg'));
     const name=shpFile.name.replace(/\.shp$/i,'');
     const shpBuf=await shpFile.arrayBuffer();
     const dbfBuf=dbfFile?await dbfFile.arrayBuffer():null;
     const prjBuf=prjFile?await prjFile.arrayBuffer():null;
-    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf,prjBuf};
+    const cpgLbl=cpgFile?normalizeCpgLabel(await cpgFile.text()):'';
+    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf,prjBuf,cpgLbl};
     document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
   }else{
     pendingFile=files[0];
@@ -1718,6 +1906,8 @@ async function loadLayerFile(file,projectName){
       const shpObj={shp:file.shpBuf};
       if(file.dbfBuf)shpObj.dbf=file.dbfBuf;
       if(file.prjBuf)shpObj.prj=file.prjBuf;
+      else toast('⚠️ .prj 없음 - 좌표계를 몰라 위치가 틀릴 수 있어요');
+      if(file.cpgLbl)shpObj.cpg=file.cpgLbl;
       geojson=await shp(shpObj);
     }else if(file.name.toLowerCase().endsWith('.kmz')){
       displayName=file.name.replace(/\.kmz$/i,'');
@@ -1737,10 +1927,13 @@ async function loadLayerFile(file,projectName){
     // 멀티레이어 처리 (KML/KMZ 폴더별)
     if(multiLayers&&multiLayers.length>0){
       let added=0;
+      // 수동 추가 → 원본/레이어 이름 블랙리스트에서 제거
+      removeScanBlacklist(projectName,displayName);
       for(const ml of multiLayers){
         if(!ml.geojson.features?.length)continue;
+        removeScanBlacklist(projectName,ml.name);
         const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
-        await saveLayerData(projectName,ml.name,ml.geojson,color,true);
+        await saveLayerData(projectName,ml.name,ml.geojson,color,true,'circle',displayName);
         const nl=allLayers[allLayers.length-1];
         if(nl)addLeafletLayer(nl);
         added++;
@@ -1755,8 +1948,8 @@ async function loadLayerFile(file,projectName){
     // 단일 레이어 처리
     const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
     const name=displayName||file.name.replace(/\.[^.]+$/,'');
-    removeScanBlacklist(projectName, name); // 수동 추가 시 블랙리스트 제거
-    await saveLayerData(projectName,name,geojson,color,true);
+    removeScanBlacklist(projectName, name); // 수동 추가 시 블랙리스트 제거 (원본/레이어 이름 동일)
+    await saveLayerData(projectName,name,geojson,color,true,'circle',displayName||name);
     const newLayer=allLayers[allLayers.length-1];
     if(newLayer)addLeafletLayer(newLayer);
     saveLayerOrder();
