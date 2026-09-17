@@ -906,7 +906,7 @@ setInterval(()=>{
 // ② 트랙이 시스템에 의해 끊기면(ended/mute) 자동 복구
 // ③ watchdog은 play() 재시도 우선, 재획득 전 기존 트랙 정리 (구버전은 누수+덮어쓰기 반복)
 let camStream=null,camWatchdog=null,camStarted=false,camStarting=false;
-let camRecovering=false,camRecoverTries=0;
+let camRecovering=false,camRecoverTries=0,camFrameToken=0;
 
 function stopCamTracks(){
   if(camStream){camStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});camStream=null;}
@@ -951,6 +951,14 @@ async function startCamera(){
     camStream=stream;camRecoverTries=0;
     const v=document.getElementById('video');v.srcObject=stream;
     if(v.play)v.play().catch(()=>{});
+    camPrevPix=null;camStillCount=0;
+    camFrameToken=(camFrameToken||0)+1;
+    if(v.requestVideoFrameCallback){
+      camFpsSupported=true;
+      const tok=camFrameToken;
+      const cb=(now)=>{if(tok!==camFrameToken||!v.srcObject||!camStarted)return;camOnFrame(now);v.requestVideoFrameCallback(cb);};
+      v.requestVideoFrameCallback(cb);
+    }else camFpsSupported=false;
     // 트랙이 시스템에 의해 끊기면(다른 앱 선점 등) 자동 복구
     stream.getVideoTracks().forEach(t=>{
       t.addEventListener('ended',()=>scheduleCamRecover());
@@ -962,11 +970,7 @@ async function startCamera(){
     document.getElementById('hud-time').textContent=fmtNow();
     toast('📷 카메라 시작됨');
     if(camWatchdog)clearInterval(camWatchdog);
-    camWatchdog=setInterval(()=>{
-      if(!v.srcObject)return;
-      if(v.paused||v.ended){v.play().catch(()=>{});return;} // 재생만 끊긴 경우는 재획득 불필요
-      if(v.readyState===0)scheduleCamRecover();             // 신호가 죽은 경우에만 재획득
-    },4000);
+    camWatchdog=setInterval(()=>camWatchTick(v),4000);
   }catch(e){
     camStarted=false;
     // 토스트는 3초 후 사라져 원인을 놓치므로 시작 화면에 지속 표시 (태블릿 원인 파악용)
@@ -992,6 +996,44 @@ function scheduleCamRecover(){
     if(!camStarted)return;
     try{await startCamera();}catch(e){}
   },2000);
+}
+
+// 프레임 감시: 트랙은 살아있는데 WebView가 프레임만 안 그리는 '얼어붙음'은 paused/readyState로 감지 불가(사용자 증상 A)
+// ① requestVideoFrameCallback 지원: 마지막 프레임 시각 기준 6초 무프레임 → 재획득
+// ② 미지원(구형 WebView): 32x24 축소 캡처 픽셀 diff 0이 2회 연속 → 재획득
+let camLastFrameTs=0,camFpsSupported=false,camPrevPix=null,camStillCount=0;
+const camDiffCanvas=document.createElement('canvas');
+camDiffCanvas.width=32;camDiffCanvas.height=24;
+const camDiffCtx=camDiffCanvas.getContext('2d',{willReadFrequently:true});
+
+function camOnFrame(now){camLastFrameTs=now;camStillCount=0;camPrevPix=null;}
+
+function camWatchTick(v){
+  if(!v.srcObject||!camStarted)return;
+  if(v.paused||v.ended){v.play().catch(()=>{});return;} // 재생만 끊긴 경우는 재획득 불필요
+  if(v.readyState===0){scheduleCamRecover();return;}    // 신호가 죽은 경우 재획득
+  const now=performance.now();
+  if(camFpsSupported){ // rVFC 기반: 마지막 콜백 이후 6초 무프레임이면 멈춤 판정
+    if(camLastFrameTs>0&&now-camLastFrameTs>6000){camLastFrameTs=now;scheduleCamRecover();}
+    return;
+  }
+  // 폴백: 축소 캡처 픽셀 diff (저해상도라 배터리 부담 미미)
+  try{
+    camDiffCtx.drawImage(v,0,0,32,24);
+    const pix=camDiffCtx.getImageData(0,0,32,24).data;
+    if(camPrevPix){
+      let diff=0;
+      for(let i=0;i+2<pix.length;i+=4){
+        diff=Math.abs(pix[i]-camPrevPix[i])+Math.abs(pix[i+1]-camPrevPix[i+1])+Math.abs(pix[i+2]-camPrevPix[i+2]);
+        if(diff>0)break;
+      }
+      if(diff===0){
+        camStillCount++;
+        if(camStillCount>=2){camStillCount=0;camPrevPix=null;scheduleCamRecover();return;}
+      }else camStillCount=0;
+    }
+    camPrevPix=pix;
+  }catch(e){}
 }
 
 // 앱 밖으로 나갔다 돌아오면 카메라를 완전히 끄고 다시 켠다 (다른 앱 카메라 회수 대비)
@@ -1172,7 +1214,7 @@ async function renderGallery(){
     const t=fmtDt(p.time);
     const div=document.createElement('div');div.className='photo-item';
     const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\n${t}`;
-    div.innerHTML=`<img class="thumb" src="${url}" onclick="openLightbox('${url}','${meta}')">
+    div.innerHTML=`<img class="thumb" src="${url}">
       <div class="pmeta">
         <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
         ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
@@ -1183,6 +1225,7 @@ async function renderGallery(){
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
         </svg></button></div>`;
+    div.querySelector('.thumb').onclick=()=>openLightbox(url,meta);
     div.querySelector('.ibtn.del').dataset.idx=allPhotos.indexOf(p);
     list.appendChild(div);
   });
@@ -1265,12 +1308,13 @@ async function refreshMarkers(){
       const icon=L.divIcon({className:'',
         html:`<div style="width:34px;height:34px;background:${g.color};border:2.5px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
         iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-38]});
-      L.marker([p.lat,p.lon],{icon})
-        .bindPopup(`<img class="popup-img" src="${url}" onclick="openLightbox('${url}','${p.projectName||''}')" style="cursor:pointer">
-          <div class="popup-title">${p.projectName||'(프로젝트 없음)'}</div>
+      const mk=L.marker([p.lat,p.lon],{icon})
+        .bindPopup(`<img class="popup-img" src="${url}">
+          <div class="popup-title">${escHtml(p.projectName||'(프로젝트 없음)')}</div>
           ${p.description?`<div class="popup-desc">▸ ${kmlEsc(p.description)}</div>`:''}
           <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}</div>`,
           {maxWidth:220}).addTo(lg);
+      mk.on('popupopen',e=>{const pe=e.popup.getElement();const im=pe&&pe.querySelector('.popup-img');if(im)im.onclick=()=>openLightbox(url,p.projectName||'');});
       bounds.push([p.lat,p.lon]);
     });
     photoLayerGroups[key]=lg;
@@ -2551,6 +2595,7 @@ async function doKMZ(list,slug){
   saveFile(await zip.generateAsync({type:'blob'}),`${slug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
 }
 function kmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function doKML(list,slug){
   let marks='';
   list.forEach((p,i)=>{marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name><description>${kmlEsc(p.description)} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
