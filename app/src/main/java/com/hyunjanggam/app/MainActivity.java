@@ -18,6 +18,8 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.util.Base64;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         setupWebView();
         requestAllPermissions();
-        webView.loadUrl("file:///android_asset/www/index.html");
+        checkForUpdateThenLoad(); // 최신 index.html 확인 후 로드 (오프라인·실패 시 내장본)
     }
 
     private void setupWebView() {
@@ -425,5 +427,74 @@ public class MainActivity extends AppCompatActivity {
         private void uiToast(String msg) {
             runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
         }
+    }
+
+    // ===== 자동 업데이트 (핫업데이트) =====
+    // GitHub raw의 remote_version.txt와 캐시본 버전 비교 → 다르면 index.html 받아서 교체 후 로드.
+    // 네트워크 실패·비정상 파일 → 내장 asset 로드 (오프라인 항상 안전). 데이터는 기기 폴더라 안 건드림.
+    private static final String REMOTE_VER_URL =
+        "https://raw.githubusercontent.com/inunik/hyunjanggam/main/app/src/main/assets/remote_version.txt";
+    private static final String UPDATE_URL =
+        "https://raw.githubusercontent.com/inunik/hyunjanggam/main/app/src/main/assets/www/index.html";
+
+    private String pendingUpdatePath = null; // null이면 내장본
+    private boolean justUpdated = false;     // 이번 실행에 새로 받았을 때만 토스트
+
+    private String remoteVersion() {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(REMOTE_VER_URL).openConnection();
+            c.setConnectTimeout(4000); c.setReadTimeout(4000);
+            c.setInstanceFollowRedirects(true);
+            if (c.getResponseCode() != 200) return null;
+            BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+            StringBuilder b = new StringBuilder(); String line;
+            while ((line = r.readLine()) != null) b.append(line.trim());
+            r.close();
+            return b.length() > 0 ? b.toString() : null;
+        } catch (Exception e) { return null; }
+    }
+
+    private boolean downloadUpdate(String remoteVer) {
+        File tmp = new File(getCacheDir(), "index_update.tmp");
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(UPDATE_URL).openConnection();
+            c.setConnectTimeout(10000); c.setReadTimeout(15000);
+            c.setInstanceFollowRedirects(true);
+            if (c.getResponseCode() != 200) return false;
+            InputStream in = new BufferedInputStream(c.getInputStream());
+            FileOutputStream out = new FileOutputStream(tmp);
+            byte[] buf = new byte[8192]; int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            out.close(); in.close();
+            if (tmp.length() < 10000) { tmp.delete(); return false; } // 비정상 짧은 응답(에러페이지) 거부
+            File dst = new File(getCacheDir(), "index_" + remoteVer + ".html");
+            if (dst.exists()) dst.delete(); // 같은 버전 재배포 대비 교체
+            if (!tmp.renameTo(dst)) { tmp.delete(); return false; }
+            justUpdated = true;
+            File[] olds = getCacheDir().listFiles((d, name) ->
+                name.startsWith("index_") && name.endsWith(".html") && !dst.getName().equals(name));
+            if (olds != null) for (File f : olds) f.delete(); // 이전 버전 캐시 정리
+            pendingUpdatePath = dst.getAbsolutePath();
+            return true;
+        } catch (Exception e) { tmp.delete(); return false; }
+    }
+
+    private void checkForUpdateThenLoad() {
+        new Thread(() -> {
+            final String ver = remoteVersion();          // null = 오프라인/실패
+            if (ver != null) {
+                File cached = new File(getCacheDir(), "index_" + ver + ".html");
+                if (!cached.exists()) downloadUpdate(ver);
+                else pendingUpdatePath = cached.getAbsolutePath();
+            }
+            runOnUiThread(() -> {
+                if (pendingUpdatePath != null) {
+                    webView.loadUrl("file://" + pendingUpdatePath);
+                    if (justUpdated) uiToast("✨ v" + ver + " 자동 업데이트 완료");
+                } else {
+                    webView.loadUrl("file:///android_asset/www/index.html");
+                }
+            });
+        }).start();
     }
 }

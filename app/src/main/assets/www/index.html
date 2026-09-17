@@ -14,7 +14,7 @@
   --text:#E8EAED;--dim:#8B949E;--gps:#00E5A0;--danger:#FF4444;--border:#2D3142;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none} /* 100vh 폴백: 구형 WebView는 dvh 미지원 → 높이 0 → 화면 안 그려짐(태블릿 증상) */
 
 /* ── 공통 ── */
 .hdr{display:flex;align-items:center;justify-content:space-between;
@@ -101,9 +101,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 14px;color:#fff;cursor:pointer;min-width:0}
 .proj-chip-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;background:var(--dim)}
 .proj-chip-label{flex:1;font-size:13px;font-weight:600;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.proj-mgr-btn{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.proj-mgr-btn svg{width:18px;height:18px}
 .desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
   border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
 .desc-inp::placeholder{color:rgba(255,255,255,.35)}
@@ -127,6 +124,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .gal-hdr h2{font-size:15px;font-weight:700}
 .gal-cnt{font-size:12px;color:var(--dim)}
+.gal-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.gal-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:16px;
+  border:1px solid var(--border);background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.gal-chip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.gal-chip-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .photo-item{background:var(--surf);border-radius:12px;overflow:hidden;
   display:flex;border:1px solid var(--border);margin-bottom:10px}
 .thumb{width:88px;height:88px;object-fit:cover;flex-shrink:0;cursor:pointer}
@@ -306,6 +308,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .popup-title{font-size:12px;font-weight:700;margin-bottom:2px}
 .popup-desc{font-size:11px;color:var(--dim);margin-bottom:4px}
 .popup-meta{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.6}
+#cap-btn.gps-ok{box-shadow:0 0 0 5px rgba(76,175,80,.35)}
 </style>
 </head>
 <body>
@@ -448,12 +451,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
             <div class="proj-chip-dot" id="chip-dot"></div>
             <span class="proj-chip-label" id="chip-label">프로젝트 선택 ▾</span>
           </button>
-          <button class="proj-mgr-btn" onclick="openProjMgr()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-            </svg>
-          </button>
         </div>
         <input class="desc-inp" id="desc-inp" type="text"
           placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열)" maxlength="60" oninput="updateHUD()">
@@ -489,18 +486,6 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </div>
     </div>
 
-    <!-- 프로젝트 관리 패널 -->
-    <div class="bottom-panel" id="proj-mgr-panel">
-      <div class="panel-hdr">
-        <h3>프로젝트 관리</h3>
-        <button class="close-btn" onclick="closeProjMgr()">✕</button>
-      </div>
-      <div class="panel-body" id="proj-mgr-list"></div>
-      <div class="add-row">
-        <button class="add-btn-outline" onclick="closeProjMgr();openNewProjModal()">+ 새 프로젝트 추가</button>
-      </div>
-    </div>
-
     <!-- 새 프로젝트 모달 -->
     <div class="modal-overlay" id="new-proj-modal">
       <div class="modal-card">
@@ -521,6 +506,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <h2>사진 목록</h2>
       <span class="gal-cnt" id="gal-cnt">0장</span>
     </div>
+    <div class="gal-filter" id="gal-filter"></div>
     <div id="gal-list"></div>
   </div>
 
@@ -890,10 +876,11 @@ function startGPS(){
   navigator.geolocation.watchPosition(
     p=>{gps=p.coords;document.getElementById('gps-dot').className='gps-dot on';
       document.getElementById('gps-txt').textContent='±'+Math.round(p.coords.accuracy)+'m';
+      const cb=document.getElementById('cap-btn');if(cb)cb.classList.add('gps-ok');
       updateHUD();
       updateMyLocation(p.coords); // 지도에 내 위치 업데이트
     },
-    ()=>{document.getElementById('gps-txt').textContent='GPS 오류';},
+    ()=>{document.getElementById('gps-txt').textContent='GPS 오류';const cb=document.getElementById('cap-btn');if(cb)cb.classList.remove('gps-ok');},
     {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
   );
 }
@@ -914,24 +901,104 @@ setInterval(()=>{
 },10000);
 
 // ===== 카메라 =====
-let camWatchdog=null;
+// 다른 앱이 카메라를 선점하면 WebView 스트림이 끊겨 화면이 멈추는 문제 수정:
+// ① 백그라운드 전환 시 트랙 완전 정지, 복귀 시 재획득
+// ② 트랙이 시스템에 의해 끊기면(ended/mute) 자동 복구
+// ③ watchdog은 play() 재시도 우선, 재획득 전 기존 트랙 정리 (구버전은 누수+덮어쓰기 반복)
+let camStream=null,camWatchdog=null,camStarted=false,camStarting=false;
+let camRecovering=false,camRecoverTries=0;
+
+function stopCamTracks(){
+  if(camStream){camStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});camStream=null;}
+  const v=document.getElementById('video');
+  if(v&&v.srcObject)v.srcObject=null;
+}
+
+// 카메라 획득: 후면 1080p → 후면 → 아무 카메라 순으로 완화 시도 (태블릿 호환)
+async function acquireCamera(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
+    throw new Error('이 기기 WebView는 카메라 API(getUserMedia) 미지원 — 시스템 WebView 업데이트 필요');
+  const tries=[
+    {video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false},
+    {video:{facingMode:'environment'},audio:false},
+    {video:true,audio:false}
+  ];
+  let lastErr=null;
+  for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c);}catch(e){lastErr=e;}}
+  throw lastErr||new Error('사용 가능한 카메라가 없어요');
+}
+
+function showCamError(msg){
+  const sc=document.getElementById('start-screen');
+  if(!sc)return;
+  sc.style.display='flex';
+  document.getElementById('cam-overlay').style.display='none';
+  let el=document.getElementById('cam-err');
+  if(!el){
+    el=document.createElement('div');el.id='cam-err';
+    el.style.cssText='color:var(--danger);font-size:13px;text-align:center;padding:0 24px;white-space:pre-line';
+    sc.insertBefore(el,sc.querySelector('.start-btn'));
+  }
+  el.textContent=msg;
+}
+
 async function startCamera(){
+  if(camStarting)return;
+  camStarting=true;camStarted=true;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia(
-      {video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false});
+    stopCamTracks(); // 잔여 트랙 정리 (재시작 시 누수·충돌 방지)
+    const stream=await acquireCamera();
+    camStream=stream;camRecoverTries=0;
     const v=document.getElementById('video');v.srcObject=stream;
+    if(v.play)v.play().catch(()=>{});
+    // 트랙이 시스템에 의해 끊기면(다른 앱 선점 등) 자동 복구
+    stream.getVideoTracks().forEach(t=>{
+      t.addEventListener('ended',()=>scheduleCamRecover());
+      t.addEventListener('mute',()=>scheduleCamRecover());
+    });
+    const errEl=document.getElementById('cam-err');if(errEl)errEl.textContent='';
     document.getElementById('start-screen').style.display='none';
     document.getElementById('cam-overlay').style.display='flex';
     document.getElementById('hud-time').textContent=fmtNow();
     toast('📷 카메라 시작됨');
     if(camWatchdog)clearInterval(camWatchdog);
-    camWatchdog=setInterval(async()=>{
-      if(v.srcObject&&(v.readyState===0||v.paused||v.ended)){
-        try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});v.srcObject=s;}catch(e2){}
-      }
+    camWatchdog=setInterval(()=>{
+      if(!v.srcObject)return;
+      if(v.paused||v.ended){v.play().catch(()=>{});return;} // 재생만 끊긴 경우는 재획득 불필요
+      if(v.readyState===0)scheduleCamRecover();             // 신호가 죽은 경우에만 재획득
     },4000);
-  }catch(e){toast('카메라 권한을 허용해주세요');}
+  }catch(e){
+    camStarted=false;
+    // 토스트는 3초 후 사라져 원인을 놓치므로 시작 화면에 지속 표시 (태블릿 원인 파악용)
+    const reason=(e&&e.name==='NotAllowedError')
+      ?'카메라 권한이 거부됐어요.\n앱 설정 → 권한에서 카메라를 허용해주세요.'
+      :String(e&&e.message||e);
+    showCamError('📷 카메라를 시작할 수 없어요\n'+reason);
+  }finally{
+    camStarting=false;
+  }
 }
+
+function scheduleCamRecover(){
+  if(camRecovering||!camStarted)return;
+  if(camRecoverTries>=5){ // 반복 실패하면 자동 재시도 중단 (배터리 보호)
+    camStarted=false;stopCamTracks();
+    showCamError('📷 카메라가 반복해서 멈춰요\n아래 버튼으로 다시 시작해주세요');
+    return;
+  }
+  camRecovering=true;camRecoverTries++;
+  setTimeout(async()=>{
+    camRecovering=false;
+    if(!camStarted)return;
+    try{await startCamera();}catch(e){}
+  },2000);
+}
+
+// 앱 밖으로 나갔다 돌아오면 카메라를 완전히 끄고 다시 켠다 (다른 앱 카메라 회수 대비)
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)stopCamTracks();
+  else if(camStarted)startCamera().catch(()=>{});
+});
 
 function capture(){
   const v=document.getElementById('video');
@@ -951,9 +1018,10 @@ function capture(){
       projectColor:selectedProject.color,
       description:document.getElementById('desc-inp').value||''
     };
+    if(gps&&meta.lat!=null)blob=await injectGpsExif(blob,gps);
     await savePhotoData(blob,meta);
     await loadAllPhotos();
-    toast('📸 저장됨!');
+    toast(meta.lat!=null?'📸 저장됨! (GPS 포함)':'⚠️ GPS 없이 저장됨 — 지도·내보내기에서 제외돼요');
     const btn=document.getElementById('cap-btn');
     btn.style.transform='scale(.85)';setTimeout(()=>btn.style.transform='',150);
   },'image/jpeg',0.92);
@@ -998,6 +1066,7 @@ function goTab(id){
   document.querySelectorAll('.nb').forEach(e=>e.classList.remove('on'));
   document.getElementById('t-'+id).classList.add('active');
   document.getElementById('nb-'+id).classList.add('on');
+  if(id!=='cam'&&camStarted){camStarted=false;if(camWatchdog)clearInterval(camWatchdog);stopCamTracks();} // 카메라 탭 벗어나면 정지(배터리)+재시작 꼬임 방지
   if(id==='gal')renderGallery();
   if(id==='map'){initMap();[150,400,800].forEach(ms=>setTimeout(()=>map&&map.invalidateSize(),ms));}
 }
@@ -1023,39 +1092,27 @@ async function renderProjSelectList(){
     const div=document.createElement('div');div.className='proj-item';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
       <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장 &nbsp;|&nbsp; 📁 내부저장소/현장캠/${p.name}/</div></div>
+      <button class="proj-del-btn" onclick="event.stopPropagation();doDeleteProject('${p.name}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg>
+      </button>
       <div class="proj-item-check">${selectedProject?.name===p.name?'✓':''}</div>`;
     div.onclick=()=>selectProject(p);el.appendChild(div);
   });
 }
 
-function openProjMgr(){document.getElementById('proj-mgr-panel').classList.add('open');renderProjMgrList();}
-function closeProjMgr(){document.getElementById('proj-mgr-panel').classList.remove('open');}
-
-async function renderProjMgrList(){
-  await loadProjects();await loadAllPhotos();
-  const el=document.getElementById('proj-mgr-list');
-  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요</div>';return;}
-  el.innerHTML='';
-  projects.forEach(p=>{
-    const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
-    const div=document.createElement('div');div.className='proj-item';div.style.cursor='default';
-    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장</div></div>
-      <button class="proj-del-btn" onclick="doDeleteProject('${p.name}')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-        </svg>
-      </button>`;
-    el.appendChild(div);
-  });
-}
-
 async function doDeleteProject(name){
-  if(!confirm(name+'\\n\\n이 프로젝트 폴더를 삭제할까요?\\n(사진·레이어 파일 모두 삭제됩니다)'))return;
+  if(!confirm(name+'\n\n이 프로젝트 폴더를 삭제할까요?\n(사진·레이어 파일 모두 삭제됩니다)'))return;
   const proj=projects.find(p=>p.name===name);
   if(proj)await deleteProjectData(proj);
+  await loadAllPhotos();
   if(selectedProject?.name===name)selectProject(null);
-  renderProjMgrList();toast('프로젝트 삭제됨');
+  if(galFilter===name)galFilter=null;
+  renderProjSelectList();
+  renderGalFilter();
+  if(map)refreshMarkers();
+  toast('프로젝트 삭제됨');
 }
 
 function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
@@ -1073,30 +1130,53 @@ async function confirmNewProj(){
 }
 
 // ===== 갤러리 =====
+let galFilter=null;    // null=전체, 그 외=프로젝트명 (사진 목록 프로젝트별 보기)
+let galFilterNames=[]; // 칩 인덱스 → 이름 매핑 (프로젝트명에 특수문자가 있어도 안전)
+function renderGalFilter(){
+  const el=document.getElementById('gal-filter');if(!el)return;
+  const names=[...new Set(allPhotos.map(p=>p.projectName||'미분류'))];
+  const order=projects.map(p=>p.name);
+  names.sort((a,b)=>{const ai=order.indexOf(a),bi=order.indexOf(b);return (ai<0?999:ai)-(bi<0?999:bi);});
+  galFilterNames=['__all__',...names];
+  let html=`<button class="gal-chip ${galFilter===null?'on':''}" onclick="setGalFilter(0)">전체</button>`;
+  html+=names.map((n,i)=>{
+    const c=projects.find(p=>p.name===n)?.color||'#888';
+    return `<button class="gal-chip ${galFilter===n?'on':''}" onclick="setGalFilter(${i+1})"><span class="gal-chip-dot" style="background:${c}"></span>${n.replace(/'/g,'&#39;')}</button>`;
+  }).join('');
+  el.innerHTML=html;
+}
+function setGalFilter(i){
+  const v=galFilterNames[i];
+  if(v===undefined)return;
+  galFilter=(v==='__all__')?null:v;
+  renderGallery();
+}
 async function renderGallery(){
   await loadProjects();await loadAllPhotos();
+  renderGalFilter();
+  const shown=galFilter?allPhotos.filter(p=>(p.projectName||'미분류')===galFilter):allPhotos;
   const list=document.getElementById('gal-list');
-  document.getElementById('gal-cnt').textContent=allPhotos.length+'장';
-  if(!allPhotos.length){
+  document.getElementById('gal-cnt').textContent=galFilter?`${shown.length}/${allPhotos.length}장`:allPhotos.length+'장';
+  if(!shown.length){
     list.innerHTML=`<div class="empty">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>아직 사진이 없어요</p><small>카메라 탭에서 촬영해보세요</small></div>`;
+      <p>${galFilter?'이 프로젝트의 사진이 없어요':'아직 사진이 없어요'}</p><small>${galFilter?'위 칩으로 다른 프로젝트를 선택해주세요':'카메라 탭에서 촬영해보세요'}</small></div>`;
     return;
   }
   list.innerHTML='';
-  allPhotos.forEach(p=>{
+  shown.forEach(p=>{
     const url=getPhotoURL(p);
     const t=fmtDt(p.time);
     const div=document.createElement('div');div.className='photo-item';
-    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\\n${t}`;
+    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\n${t}`;
     div.innerHTML=`<img class="thumb" src="${url}" onclick="openLightbox('${url}','${meta}')">
       <div class="pmeta">
         <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
         ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
-        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\\n고도 '+Math.round(p.alt)+'m':''}</div>
+        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\n고도 '+Math.round(p.alt)+'m':''}</div>
         <div class="ptime">${t}</div>
       </div>
       <div class="pacts"><button class="ibtn del" onclick="doDelPhoto(this)">
@@ -1117,6 +1197,8 @@ async function doDelPhoto(btn){
 let map,baseTileLayer;
 let myLocMarker=null, myLocCircle=null; // 내 위치 표시
 let photoLayerGroups={},photoLayerVisible={},leafletLayers={};
+// 사진 on/off 상태 복원 (메모리에만 있어 앱 재시작마다 전부 다시 켜지던 문제 수정)
+try{Object.assign(photoLayerVisible,JSON.parse(localStorage.getItem('photoLayerVisible')||'{}'));}catch(e){}
 
 function initMap(){
   try{
@@ -1186,7 +1268,7 @@ async function refreshMarkers(){
       L.marker([p.lat,p.lon],{icon})
         .bindPopup(`<img class="popup-img" src="${url}" onclick="openLightbox('${url}','${p.projectName||''}')" style="cursor:pointer">
           <div class="popup-title">${p.projectName||'(프로젝트 없음)'}</div>
-          ${p.description?`<div class="popup-desc">▸ ${p.description}</div>`:''}
+          ${p.description?`<div class="popup-desc">▸ ${kmlEsc(p.description)}</div>`:''}
           <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}</div>`,
           {maxWidth:220}).addTo(lg);
       bounds.push([p.lat,p.lon]);
@@ -1198,8 +1280,12 @@ async function refreshMarkers(){
   if(document.getElementById('settings-panel').classList.contains('open'))renderSettingsLayerList();
 }
 
+function savePhotoLayerVisible(){
+  try{localStorage.setItem('photoLayerVisible',JSON.stringify(photoLayerVisible));}catch(e){}
+}
 function togglePhotoLayer(key){
   photoLayerVisible[key]=!photoLayerVisible[key];
+  savePhotoLayerVisible();
   const lg=photoLayerGroups[key];
   if(lg){photoLayerVisible[key]?lg.addTo(map):map.removeLayer(lg);}
   renderSettingsLayerList();
@@ -1210,6 +1296,7 @@ function toggleAllPhotoLayers(visible){
     const lg=photoLayerGroups[key];
     if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
   });
+  savePhotoLayerVisible();
   renderSettingsLayerList();
 }
 
@@ -1337,6 +1424,7 @@ async function toggleLayer(idx){
 
 async function deleteLayer(idx){
   const l=allLayers[idx];if(!l)return;
+  if(!confirm(l.name+'\n\n이 레이어를 삭제할까요?\n복구가 필요하면 설정 → 삭제한 파일 목록에서 할 수 있어요'))return;
   const key=l.geojsonPath||l.id;
   if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
   // 스캔 블랙리스트에 등록 (폴더 재스캔 시 부활 방지)
@@ -1700,6 +1788,7 @@ async function toggleProjectAll(projEncoded,visible){
   const photoKey=proj==='미분류'?'none':proj;
   // 사진 토글
   photoLayerVisible[photoKey]=visible;
+  savePhotoLayerVisible();
   const lg=photoLayerGroups[photoKey];
   if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
   // 레이어 토글
@@ -1899,8 +1988,9 @@ async function manualScanFolders(){
   toast('폴더 스캔 중...');
   await loadProjects();
   let total=0;
+  const stats={bl:[],fail:[]};
   for(const p of projects){
-    const added=await scanProjectLayers(p.name);
+    const added=await scanProjectLayers(p.name,stats);
     total+=added;
   }
   await loadAllLayers();
@@ -1911,8 +2001,10 @@ async function manualScanFolders(){
   });
   reapplyLayerOrder();
   renderSettingsLayerList();
-  if(total>0) toast(`✅ ${total}개 새 파일 읽었어요`);
-  else toast('새 파일 없음 (이미 읽었거나 파일 없음)');
+  let msg=total>0?`✅ ${total}개 새 파일 읽었어요`:'새 파일 없음 (이미 읽었거나 파일 없음)';
+  if(stats.bl.length)msg+=`\n🚫 삭제이력 제외 ${stats.bl.length}개 — 설정 → 삭제한 파일 목록에서 복구 가능`;
+  if(stats.fail.length)msg+=`\n❌ 실패 ${stats.fail.length}개: ${stats.fail.slice(0,2).join(', ')}${stats.fail.length>2?' 외':''}`;
+  toast(msg);
 }
 
 // 자동 스캔 (내부용 - openSettings에서는 더 이상 호출 안 함)
@@ -1920,7 +2012,7 @@ async function autoScanFolders(){
   for(const p of projects){await scanProjectLayers(p.name);}
 }
 
-async function scanProjectLayers(projName){
+async function scanProjectLayers(projName,scanStats){
   try{
     const rawFiles=JSON.parse(AndroidBridge.listRawLayerFiles(projName));
     const existingLayers=JSON.parse(AndroidBridge.listLayers(projName));
@@ -1940,7 +2032,7 @@ async function scanProjectLayers(projName){
     for(const [name,files] of Object.entries(groups)){
       if(existingNames.has(name))continue; // 이미 처리됨 (같은 이름의 레이어 존재)
       if(existingSrc.has(name))continue;   // 이 원본 파일에서 이미 레이어 생성됨
-      if(isScanBlacklisted(projName,name))continue; // 사용자가 삭제한 원본 파일
+      if(isScanBlacklisted(projName,name)){if(scanStats)scanStats.bl.push(name);continue;} // 사용자가 삭제한 원본 파일
 
       let geojson;
       try{
@@ -2007,7 +2099,7 @@ async function scanProjectLayers(projName){
           added++;
           toast(`📂 ${name} 읽는 중...`);
         }
-      }catch(e){console.error('파일 처리 실패:',name,e);}
+      }catch(e){console.error('파일 처리 실패:',name,e);if(scanStats)scanStats.fail.push(name+': '+(e&&e.message||'파싱 실패'));}
     }
     return added;
   }catch(e){console.error('스캔 실패:',projName,e);return 0;}
@@ -2220,7 +2312,7 @@ function openBlacklistManager(){
     html+='<div class="layer-item" style="padding-left:4px">'+
       '<div class="layer-info"><div class="layer-name" style="font-size:13px">'+e.name.replace(/'/g,'&#39;')+'</div>'+
       '<div class="layer-sub">📁 '+e.proj.replace(/'/g,'&#39;')+'</div></div>'+
-      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">삭제 해제</button></div>';
+      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">🔄 복구</button></div>';
   });
   html+='<button class="add-btn-outline" style="width:100%;margin-top:8px" onclick="closeBlacklistManager()">← 레이어 목록으로</button>';
   el.innerHTML=html;
@@ -2230,16 +2322,46 @@ function closeBlacklistManager(){
   if(blBtn)blBtn.style.display='';
   renderSettingsLayerList();
 }
-function blRemoveOne(pjEnc,nmEnc){
-  removeScanBlacklist(decodeURIComponent(pjEnc),decodeURIComponent(nmEnc));
-  toast('삭제 해제됨 - 폴더 읽기에서 다시 등록돼요');
-  openBlacklistManager();
+async function blRemoveOne(pjEnc,nmEnc){
+  const pj=decodeURIComponent(pjEnc), nm=decodeURIComponent(nmEnc);
+  // 원본명+레이어명 쌍 등 관련 이력 전부 제거
+  removeScanBlacklist(pj,nm);
+  let bl;try{bl=JSON.parse(localStorage.getItem('scanBL')||'{}');}catch(e){bl={};}
+  Object.keys(bl).forEach(p=>{(bl[p]||[]).forEach(n=>{
+    if(blNorm(n)===blNorm(nm)||blNorm(n)===blNorm(pj))removeScanBlacklist(p,n);
+  });});
+  toast('복구 중... (폴더 다시 읽는 중)');
+  const added=await scanProjectLayers(pj,{bl:[],fail:[]});
+  if(added>0){
+    await loadAllLayers();
+    allLayers.forEach(l=>{
+      const key=l.geojsonPath||l.id;
+      if(!leafletLayers[key])addLeafletLayer(l);
+    });
+    reapplyLayerOrder();
+  }
+  renderSettingsLayerList();
+  updateBlCount();
+  toast(added>0?`✅ 복구됨: ${nm} (${added}개 레이어)`:'해제됨 — 기기에 해당 파일이 없어요 (USB로 넣은 뒤 폴더 읽기)');
 }
-function blClearAll(n){
-  if(n>0&&!confirm('삭제 이력을 전부 지울까요? 폴더 읽기 시 삭제했던 파일도 다시 등록됩니다.'))return;
+async function blClearAll(n){
+  if(n>0&&!confirm('삭제 이력을 전부 지울까요?\n지금 바로 폴더를 다시 읽어 복구합니다.'))return;
   localStorage.removeItem('scanBL');
-  toast('블랙리스트 비움');
-  openBlacklistManager();
+  toast('복구 중... (전체 폴더 다시 읽는 중)');
+  let total=0;
+  await loadProjects();
+  for(const p of projects){total+=await scanProjectLayers(p.name,{bl:[],fail:[]});}
+  if(total>0){
+    await loadAllLayers();
+    allLayers.forEach(l=>{
+      const key=l.geojsonPath||l.id;
+      if(!leafletLayers[key])addLeafletLayer(l);
+    });
+    reapplyLayerOrder();
+  }
+  renderSettingsLayerList();
+  updateBlCount();
+  toast(total>0?`✅ ${total}개 레이어 복구됨`:'해제됨 — 기기에 파일이 없어요');
 }
 
 async function loadFromURL(){
@@ -2419,24 +2541,114 @@ async function doKMZ(list,slug){
       blob=await res.blob();
     }else{blob=p.blob;}
     imgs.file(fn,await blob.arrayBuffer());
-    marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name>
+    marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name>
     <description><![CDATA[<img src="files/${fn}" width="300"><br>
-    <b>${p.projectName||''}</b><br>${p.description?'▸ '+p.description+'<br>':''}
-    ${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}]]></description>
+    <b>${kmlEsc(p.projectName||'')}</b><br>${p.description?'▸ '+kmlEsc(p.description)+'<br>':''}${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}]]></description>
     <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
     <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
   }
   zip.file('doc.kml',`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`);
   saveFile(await zip.generateAsync({type:'blob'}),`${slug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
 }
+function kmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function doKML(list,slug){
   let marks='';
-  list.forEach((p,i)=>{marks+=`<Placemark><name>${p.projectName||'사진 '+(i+1)}</name><description>${p.description||''} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
+  list.forEach((p,i)=>{marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name><description>${kmlEsc(p.description)} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
   saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${slug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
 }
 function doGeoJSON(list,slug){
   const features=list.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat,p.alt||0]},properties:{project:p.projectName||'',description:p.description||'',time:p.time}}));
   saveFile(new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'}),`${slug}_${dateStr()}.geojson`,'application/json');
+}
+
+
+
+
+function concatU8(...arrs){const len=arrs.reduce((s,a)=>s+a.length,0);const r=new Uint8Array(len);let o=0;for(const a of arrs){r.set(a,o);o+=a.length;}return r;}
+function u8(v){return new Uint8Array([v&255]);}
+function u16le(v){const b=new Uint8Array(2);b[0]=v&255;b[1]=(v>>8)&255;return b;}
+function u32le(v){const b=new Uint8Array(4);b[0]=v&255;b[1]=(v>>8)&255;b[2]=(v>>16)&255;b[3]=(v>>>24)&255;return b;}
+function asciiBytes(s){const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&255;return b;}
+function toRat(v,den){const num=Math.round(v*den);return [num,den];}
+
+function buildGpsExif(lat,lon,alt){
+  const latRef=lat<0?'S':'N', lonRef=lon<0?'W':'E';
+  const dms=(v)=>{v=Math.abs(v);const d=Math.floor(v);const mF=(v-d)*60;const m=Math.floor(mF);const s=(mF-m)*60;return [toRat(d,1),toRat(m,1),toRat(s,10000)];};
+  const latV=dms(lat), lonV=dms(lon);
+  const IFD0_OFF=8;
+  // IFD0: 2항목(Exif포인터+GPS포인터)+next → 2+24+4=30바이트 → ExifIFD@38
+  // ExifIFD: 1항목(ExifVersion, 4바이트 인라인)+next → 2+12+4=18바이트 → GPSIFD@56
+  const EXIF_OFF=38, GPS_OFF=56;
+  const ifd0=concatU8(u16le(2),
+    u16le(0x8769),u16le(4),u32le(1),u32le(EXIF_OFF),
+    u16le(0x8825),u16le(4),u32le(1),u32le(GPS_OFF),
+    u32le(0));
+  const exifIfd=concatU8(u16le(1),
+    u16le(0x9000),u16le(7),u32le(4),u32le((0x30)|(0x32<<8)|(0x33<<16)|(0x30<<24)), // '0230' 바이트 순서
+    u32le(0));
+  // GPS 항목: [tag,count,type,size, 값 or 마커]
+  const gpsMeta=[
+    [0x0000,4,7,4,[0x32,0x33,0x30,0x30]],                 // '2300' EXIF 2.3
+    [0x0001,2,2,2,[latRef.charCodeAt(0),0]],
+    [0x0002,3,5,24,'LATVAL'],
+    [0x0003,2,2,2,[lonRef.charCodeAt(0),0]],
+    [0x0004,3,5,24,'LONVAL'],
+    [0x0005,1,1,1,[0,0,0,0]],                             // altRef 0=해발
+    [0x0006,1,5,8,'ALTVAL'],
+  ].filter(e=>!(e[0]===0x0006&&alt==null));
+  let dataOff=GPS_OFF+2+12*gpsMeta.length+4;
+  const valChunks=[]; const entries=[];
+  for(const [tag,cnt,type,sz,val] of gpsMeta){
+    if(!Array.isArray(val)&&typeof val==='string'){
+      entries.push(concatU8(u16le(tag),u16le(type),u32le(cnt),u32le(dataOff)));
+      if(val==='LATVAL')valChunks.push(concatU8(...latV.flatMap(r=>[u32le(r[0]),u32le(r[1])])));
+      else if(val==='LONVAL')valChunks.push(concatU8(...lonV.flatMap(r=>[u32le(r[0]),u32le(r[1])])));
+      else if(val==='ALTVAL'){const ar=toRat(alt,100);valChunks.push(concatU8(u32le(ar[0]),u32le(ar[1])));}
+      dataOff+=sz;
+    }else{
+      const b=val.slice(0,4); while(b.length<4)b.push(0);
+      entries.push(concatU8(u16le(tag),u16le(type),u32le(cnt),u32le(b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<24))));
+    }
+  }
+  const gpsIfd=concatU8(u16le(gpsMeta.length),...entries,u32le(0));
+  const tiff=concatU8(asciiBytes('II'),u16le(42),u32le(IFD0_OFF),ifd0,exifIfd,gpsIfd,...valChunks);
+  const payload=concatU8(asciiBytes('Exif\0\0'),tiff);
+  return concatU8(u8(0xFF),u8(0xE1),u16be(payload.length+2),payload);
+}
+function u16be(v){const b=new Uint8Array(2);b[0]=(v>>8)&255;b[1]=v&255;return b;}
+
+function injectGpsExifBytes(jpegBytes,lat,lon,alt){
+  if(jpegBytes[0]!==0xFF||jpegBytes[1]!==0xD8)throw new Error('JPEG 아님');
+  let off=2, app1=null;
+  while(off<jpegBytes.length-1){
+    if(jpegBytes[off]!==0xFF){throw new Error('마커 정렬 깨짐@'+off);}
+    const marker=jpegBytes[off+1];
+    if(marker===0xDA||marker===0xD9)break;
+    const len=(jpegBytes[off+2]<<8)|jpegBytes[off+3];
+    if(marker===0xE1){app1=[off,len];break;}
+    off+=2+len;
+  }
+  const app1seg=buildGpsExif(lat,lon,alt);
+  let out;
+  if(app1){
+    const [s,len]=app1;
+    out=concatU8(jpegBytes.slice(0,s),app1seg,jpegBytes.slice(s+2+len));
+  }else{
+    out=concatU8(jpegBytes.slice(0,2),app1seg,jpegBytes.slice(2));
+  }
+  return out;
+}
+
+// 브라우저용: Blob → EXIF 주입 → Blob (실패 시 원본 반환, 저장은 항상 성공)
+function b64FromBytes(bytes){let s='';const CH=0x8000;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return btoa(s);}
+async function injectGpsExif(blob,gps){
+  try{
+    if(!gps||gps.latitude==null||gps.longitude==null)return blob;
+    const bytes=new Uint8Array(await blob.arrayBuffer());
+    const out=injectGpsExifBytes(bytes,gps.latitude,gps.longitude,gps.altitude==null?null:gps.altitude);
+    const res=await fetch('data:image/jpeg;base64,'+b64FromBytes(out));
+    return await res.blob();
+  }catch(e){console.error('EXIF 주입 실패(원본으로 저장):',e);return blob;}
 }
 
 function saveFile(blob,filename,mimeType){
@@ -2512,7 +2724,7 @@ async function clearAll(){
   }
   projects=[];allPhotos=[];allLayers=[];selectedProject=null;selectProject(null);
   Object.values(photoLayerGroups).forEach(lg=>map&&map.removeLayer(lg));
-  photoLayerGroups={};photoLayerVisible={};
+  photoLayerGroups={};photoLayerVisible={};savePhotoLayerVisible();
   Object.values(leafletLayers).forEach(l=>map&&map.removeLayer(l));
   leafletLayers={};
   toast('전체 삭제됨');
