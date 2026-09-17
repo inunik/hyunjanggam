@@ -906,7 +906,7 @@ setInterval(()=>{
 // ② 트랙이 시스템에 의해 끊기면(ended/mute) 자동 복구
 // ③ watchdog은 play() 재시도 우선, 재획득 전 기존 트랙 정리 (구버전은 누수+덮어쓰기 반복)
 let camStream=null,camWatchdog=null,camStarted=false,camStarting=false;
-let camRecovering=false,camRecoverTries=0,camFrameToken=0;
+let camRecovering=false,camRecoverTries=0,camFrameToken=0,camEverStarted=false;
 
 function stopCamTracks(){
   if(camStream){camStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});camStream=null;}
@@ -948,7 +948,7 @@ async function startCamera(){
   try{
     stopCamTracks(); // 잔여 트랙 정리 (재시작 시 누수·충돌 방지)
     const stream=await acquireCamera();
-    camStream=stream;camRecoverTries=0;
+    camStream=stream;camRecoverTries=0;camEverStarted=true;
     const v=document.getElementById('video');v.srcObject=stream;
     if(v.play)v.play().catch(()=>{});
     camPrevPix=null;camStillCount=0;
@@ -1109,6 +1109,7 @@ function goTab(id){
   document.getElementById('t-'+id).classList.add('active');
   document.getElementById('nb-'+id).classList.add('on');
   if(id!=='cam'&&camStarted){camStarted=false;if(camWatchdog)clearInterval(camWatchdog);stopCamTracks();} // 카메라 탭 벗어나면 정지(배터리)+재시작 꼬임 방지
+  if(id==='cam'&&camEverStarted&&!camStarted)startCamera().catch(()=>{}); // 한 번 시작된 적 있으면 복귀 시 자동 재시작 — 정지 뒤 마지막 프레임만 남는 증상 수정(0917)
   if(id==='gal')renderGallery();
   if(id==='map'){initMap();[150,400,800].forEach(ms=>setTimeout(()=>map&&map.invalidateSize(),ms));}
 }
