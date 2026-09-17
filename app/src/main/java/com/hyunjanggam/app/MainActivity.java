@@ -490,7 +490,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 if (pendingUpdatePath != null) {
                     webView.loadUrl("file://" + pendingUpdatePath);
-                    if (justUpdated) uiToast("✨ v" + ver + " 자동 업데이트 완료");
+                    if (justUpdated) Toast.makeText(MainActivity.this, "✨ v" + ver + " 자동 업데이트 완료", Toast.LENGTH_LONG).show();
                 } else {
                     webView.loadUrl("file:///android_asset/www/index.html");
                 }
