@@ -14,19 +14,18 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Java 17 설정
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Gradle 직접 설치
-      run: |
-        wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip
-        unzip -q gradle-8.4-bin.zip -d $HOME
-        echo "$HOME/gradle-8.4/bin" >> $GITHUB_PATH
+    - name: Gradle 설정
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.4'
 
     - name: APK 빌드
-      run: gradle assembleDebug --no-daemon
+      run: gradle assembleDebug
 
     - name: APK 업로드
       uses: actions/upload-artifact@v4
@@ -34,3 +33,10 @@ jobs:
         name: 현장캠-apk
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
+
+    - name: 원격 버전 파일 업로드
+      uses: actions/upload-artifact@v4
+      with:
+        name: remote_version
+        path: app/src/main/assets/remote_version.txt
+        retention-days: 90
