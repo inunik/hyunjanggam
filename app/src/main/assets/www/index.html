@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>현장캠</title>
 <link rel="stylesheet" href="leaflet.min.css"
   onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .pane{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto}
 .pane.active{display:flex}
 
-.nav{display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0}
+.nav{display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:10px 4px;background:none;border:none;color:var(--dim);cursor:pointer}
 .nb.on{color:var(--accent)}
@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .panel-hdr h3{font-size:15px;font-weight:700}
 .panel-body{flex:1;overflow-y:auto}
 .close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;font-size:16px}
-.add-row{padding:10px 16px 20px;flex-shrink:0}
+.add-row{padding:10px 16px calc(20px + env(safe-area-inset-bottom,0px));flex-shrink:0}
 .add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);border:1px dashed var(--accent);
   border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
 .no-items{padding:24px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
@@ -94,7 +94,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
   text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
 .hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
-.cam-ctrl{padding:16px 20px 28px;background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
+.cam-ctrl{padding:16px 20px calc(28px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
   display:flex;flex-direction:column;gap:12px}
 .proj-select-row{display:flex;gap:8px;align-items:center}
 .proj-chip{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);
