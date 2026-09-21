@@ -104,7 +104,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
   border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
 .desc-inp::placeholder{color:rgba(255,255,255,.35)}
-.cap-row{display:flex;align-items:center;justify-content:center;gap:28px}
+.cap-row{display:flex;align-items:center;justify-content:center;gap:28px;padding-bottom:var(--tab-safe,0px)}
 .cap-btn{width:74px;height:74px;border-radius:50%;background:var(--accent);
   border:4px solid rgba(255,255,255,.3);box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(255,107,0,.4);
   cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s}
@@ -899,6 +899,19 @@ function updateHUD(){
 setInterval(()=>{
   const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
 },10000);
+
+// ===== 태블릿 하단 가림 보정 =====
+// 신형 안드로이드 태블릿은 앱을 강제 엣지투엣지로 띄워 시스템 내비바가 콘텐츠 위에 겹침.
+// Android WebView는 env(safe-area-inset-bottom)을 0으로 반환하는 경우가 많아 CSS만으론 못 막음
+// → 넓은 화면(태블릿/폴더블)에서 촬영 버튼 아래에 여유 공간 확보 (세로: 내비바가 아래, 가로: 옆이라 가림 없음)
+(function(){
+  try{
+    if(window.innerWidth>=560){
+      document.documentElement.classList.add('tab-wide');
+      document.documentElement.style.setProperty('--tab-safe','64px');
+    }
+  }catch(e){}
+})();
 
 // ===== 카메라 =====
 // 다른 앱이 카메라를 선점하면 WebView 스트림이 끊겨 화면이 멈추는 문제 수정:

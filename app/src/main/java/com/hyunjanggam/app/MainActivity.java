@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.graphics.Rect;
 import android.os.Environment;
 import android.webkit.*;
 import android.widget.Toast;
@@ -42,9 +43,34 @@ public class MainActivity extends AppCompatActivity {
         ensureDir(new File(baseDir, "내보내기"));
 
         webView = findViewById(R.id.webview);
+        applyEdgeInsetPadding(); // 태블릿 강제 엣지투엣지: 내비바에 하단 가려짐 방지 (WebView env() 대응은 불안정)
         setupWebView();
         requestAllPermissions();
         checkForUpdateThenLoad(); // 최신 index.html 확인 후 로드 (오프라인·실패 시 내장본)
+    }
+
+    // 시스템 내비바가 WebView 위에 겹치는 만큼 루트에 하단 패딩을 부여 (태블릿 강제 엣지투엣지 대응)
+    // WebView 자체 패딩은 렌더링에 반영되지 않는 알려진 문제가 있어 부모 FrameLayout에 적용
+    private void applyEdgeInsetPadding() {
+        final android.widget.FrameLayout root = findViewById(android.R.id.content);
+        if (root == null) return;
+        root.post(new Runnable() {
+            @Override public void run() {
+                Rect r = new Rect();
+                root.getWindowVisibleDisplayFrame(r);
+                int[] loc = new int[2];
+                root.getLocationOnScreen(loc);
+                int windowBottom = loc[1] + root.getHeight();
+                int navInset = Math.max(0, windowBottom - r.bottom);
+                root.setPadding(0, 0, 0, navInset);
+            }
+        });
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applyEdgeInsetPadding(); // 회전하면 내비바 위치(아래/옆)가 바뀌므로 재계산
     }
 
     private void setupWebView() {
