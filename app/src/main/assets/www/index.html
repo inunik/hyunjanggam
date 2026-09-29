@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .panel-hdr h3{font-size:15px;font-weight:700}
 .panel-body{flex:1;overflow-y:auto}
 .close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;font-size:16px}
-.add-row{padding:10px 16px calc(16px + var(--bottom-inset,60px));flex-shrink:0}
+.add-row{padding:10px 16px calc(16px + var(--nav-safe,0px));flex-shrink:0}
 .add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);border:1px dashed var(--accent);
   border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
 .no-items{padding:24px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
@@ -207,10 +207,13 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   color:var(--dim);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ord-btn:disabled{opacity:.25;cursor:default}
 .layer-proj-hdr{display:flex;align-items:center;justify-content:space-between;
-  padding:8px 0 4px;margin-top:8px;border-top:1px solid var(--border)}
+  padding:8px 0 4px;margin-top:8px;border-top:1px solid var(--border);cursor:pointer;user-select:none}
 .layer-proj-hdr:first-child{border-top:none;margin-top:0}
 .layer-proj-name{font-size:12px;font-weight:700;color:var(--text)}
 .layer-proj-toggle{font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600}
+.layer-proj-arrow{font-size:11px;color:var(--dim);margin-left:4px;transition:transform .2s}
+.layer-proj-body{overflow:hidden;transition:max-height .25s ease}
+.layer-proj-body.collapsed{display:none}
 
 /* 레이어 확장 패널 (색상+아이콘) */
 .layer-expand{background:var(--bg);border-radius:8px;padding:8px 10px;margin:2px 0 6px;display:none}
@@ -675,6 +678,7 @@ function makeSymbolHtml(color,symbol,size=28){
 }
 
 let expandedLayers=new Set(); // 펼쳐진 레이어 key 목록
+let collapsedProjects=new Set(); // 접힌 프로젝트 key 목록
 
 // ===== 상태 =====
 let projects=[], allPhotos=[], allLayers=[];
@@ -912,10 +916,6 @@ setInterval(()=>{
       // 0~200px = 시스템 네비바, 200px 이상 = 소프트 키보드라 제외
       const sysNavH = (diff > 4 && diff < 200) ? diff : 0;
       document.documentElement.style.setProperty('--nav-safe', sysNavH + 'px');
-      // fixed 패널용: 앱 탭바 높이 + 시스템 네비바 합산 → --bottom-inset
-      const appNav = document.querySelector('.nav');
-      const appNavH = appNav ? Math.round(appNav.getBoundingClientRect().height) : 60;
-      document.documentElement.style.setProperty('--bottom-inset', (sysNavH + appNavH) + 'px');
     }
     applyNavSafe();
     window.addEventListener('load', applyNavSafe);
@@ -1617,13 +1617,16 @@ function renderSettingsLayerList(){
     const allOn=(projPhotos.length===0||photoOn)&&projLayers.every(({l})=>l.visible);
     const projColor=projects.find(p=>p.name===proj)?.color||'#888';
 
-    html+=`<div class="layer-proj-hdr">
+    const isCollapsed=collapsedProjects.has(proj);
+    html+=`<div class="layer-proj-hdr" onclick="toggleProjCollapse('${encodeURIComponent(proj)}')">
       <div style="display:flex;align-items:center;gap:6px">
         <div class="layer-color" style="background:${projColor};width:10px;height:10px;border-radius:2px"></div>
         <span class="layer-proj-name">${proj}</span>
+        <span class="layer-proj-arrow" style="transform:rotate(${isCollapsed?'-90':'0'}deg)">▾</span>
       </div>
-      <button class="layer-proj-toggle" onclick="toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
-    </div>`;
+      <button class="layer-proj-toggle" onclick="event.stopPropagation();toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+    </div>
+    <div class="layer-proj-body${isCollapsed?' collapsed':''}">`;
 
     // 사진 행
     if(projPhotos.length>0){
@@ -1669,6 +1672,7 @@ function renderSettingsLayerList(){
         <div class="symbol-grid">${Object.entries(SYMBOL_LABELS).map(([s,lb])=>`<button class="symbol-btn ${sym===s?'on':''}" onclick="setLayerSymbol(${idx},'${s}')" title="${s}">${makeSymbolHtml(l.color,s,18)}</button>`).join('')}</div>
       </div>`;
     });
+    html+='</div>'; // layer-proj-body 닫기
   });
 
   if(!gpsPhotos.length&&!allLayers.length)
@@ -1680,6 +1684,13 @@ function renderSettingsLayerList(){
 function toggleLayerExpand(eKey){
   if(expandedLayers.has(eKey))expandedLayers.delete(eKey);
   else expandedLayers.add(eKey);
+  renderSettingsLayerList();
+}
+
+function toggleProjCollapse(projEncoded){
+  const proj=decodeURIComponent(projEncoded);
+  if(collapsedProjects.has(proj))collapsedProjects.delete(proj);
+  else collapsedProjects.add(proj);
   renderSettingsLayerList();
 }
 
