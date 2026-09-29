@@ -71,7 +71,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 /* ── 모달 ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
 .modal-overlay.show{display:flex}
-.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));width:100%;max-width:520px;margin:0 auto;max-height:80vh;overflow-y:auto}
+.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;padding-bottom:calc(24px + var(--nav-safe,0px));width:100%;max-width:520px;margin:0 auto;max-height:80vh;overflow-y:auto}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
 .modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
 .modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:10px;
@@ -900,12 +900,25 @@ setInterval(()=>{
   const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
 },10000);
 
-// ===== 태블릿 하단 가림 보정 =====
-// 신형 안드로이드 태블릿은 앱을 강제 엣지투엣지로 띄워 시스템 내비바가 콘텐츠 위에 겹침.
-// Android WebView는 env(safe-area-inset-bottom)을 0으로 반환하는 경우가 많아 CSS만으론 못 막음
-// → 넓은 화면(태블릿/폴더블)에서 촬영 버튼 아래에 여유 공간 확보 (세로: 내비바가 아래, 가로: 옆이라 가림 없음)
+// ===== 시스템 네비바 높이 감지 + 하단 가림 보정 =====
+// Android WebView는 env(safe-area-inset-bottom)을 0으로 반환하는 경우가 많음.
+// visualViewport.height vs window.innerHeight 차이로 실제 네비바 높이를 감지 → --nav-safe 에 세팅.
+// 태블릿(폴더블 포함) 촬영버튼 보정은 --tab-safe 유지.
 (function(){
   try{
+    function applyNavSafe(){
+      // 소프트 키보드가 없을 때: innerHeight - visualViewport.height = 네비바 높이
+      const vv = window.visualViewport;
+      const diff = vv ? Math.round(window.innerHeight - vv.height) : 0;
+      // diff가 0~200 범위일 때만 네비바로 판단 (키보드는 200px 이상)
+      const navH = (diff > 0 && diff < 200) ? diff : 0;
+      document.documentElement.style.setProperty('--nav-safe', navH + 'px');
+    }
+    applyNavSafe();
+    if(window.visualViewport) window.visualViewport.addEventListener('resize', applyNavSafe);
+    window.addEventListener('resize', applyNavSafe);
+
+    // 태블릿/폴더블 촬영버튼 보정 유지
     if(window.innerWidth>=560){
       document.documentElement.classList.add('tab-wide');
       document.documentElement.style.setProperty('--tab-safe','64px');
