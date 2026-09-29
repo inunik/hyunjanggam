@@ -678,7 +678,7 @@ function makeSymbolHtml(color,symbol,size=28){
 }
 
 let expandedLayers=new Set(); // 펼쳐진 레이어 key 목록
-let collapsedProjects=new Set(); // 접힌 프로젝트 key 목록
+let collapsedProjects=new Set(JSON.parse(localStorage.getItem('collapsedProjects')||'[]')); // 접힌 프로젝트 key 목록
 
 // ===== 상태 =====
 let projects=[], allPhotos=[], allLayers=[];
@@ -904,25 +904,12 @@ setInterval(()=>{
   const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
 },10000);
 
-// ===== 시스템 네비바 높이 감지 + 하단 가림 보정 =====
-// Android WebView는 env(safe-area-inset-bottom)을 0으로 반환하는 경우가 많음.
-// visualViewport.height vs window.innerHeight 차이로 실제 네비바 높이를 감지 → --nav-safe 에 세팅.
-// 태블릿(폴더블 포함) 촬영버튼 보정은 --tab-safe 유지.
+// ===== 시스템 네비바 보정 =====
+// --nav-safe: MainActivity.java의 WindowInsetsCompat → injectNavSafe() → evaluateJavascript() 로 주입.
+// 네비바 동적 켜기/끄기, 회전 모두 Java 쪽에서 자동 재주입하므로 JS에서 별도 감지 불필요.
 (function(){
   try{
-    function applyNavSafe(){
-      const vv = window.visualViewport;
-      const diff = vv ? Math.round(window.innerHeight - vv.height) : 0;
-      // 0~200px = 시스템 네비바, 200px 이상 = 소프트 키보드라 제외
-      const sysNavH = (diff > 4 && diff < 200) ? diff : 0;
-      document.documentElement.style.setProperty('--nav-safe', sysNavH + 'px');
-    }
-    applyNavSafe();
-    window.addEventListener('load', applyNavSafe);
-    if(window.visualViewport) window.visualViewport.addEventListener('resize', applyNavSafe);
-    window.addEventListener('resize', applyNavSafe);
-
-    // 태블릿/폴더블 촬영버튼 보정 유지
+    // 태블릿/폴더블 촬영버튼 보정
     if(window.innerWidth>=560){
       document.documentElement.classList.add('tab-wide');
       document.documentElement.style.setProperty('--tab-safe','64px');
@@ -1691,6 +1678,7 @@ function toggleProjCollapse(projEncoded){
   const proj=decodeURIComponent(projEncoded);
   if(collapsedProjects.has(proj))collapsedProjects.delete(proj);
   else collapsedProjects.add(proj);
+  localStorage.setItem('collapsedProjects',JSON.stringify([...collapsedProjects]));
   renderSettingsLayerList();
 }
 
