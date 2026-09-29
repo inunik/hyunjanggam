@@ -69,9 +69,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .proj-del-btn svg{width:14px;height:14px}
 
 /* ── 모달 ── */
-.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
 .modal-overlay.show{display:flex}
-.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;width:100%}
+.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));width:100%}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
 .modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
 .modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:10px;
