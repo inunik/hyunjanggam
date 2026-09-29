@@ -1212,6 +1212,7 @@ async function confirmNewProj(){
   closeNewProjModal();
   document.getElementById('new-proj-inp').value='';
   selectProject({name,color,...proj});
+  renderSettingsLayerList(); // 새 프로젝트 지도 레이어 목록에 즉시 반영
   toast('✅ '+name+' 추가됨');
 }
 
@@ -1599,12 +1600,12 @@ function saveVWorldKey(){
 // ===== 설정 내 레이어 목록 =====
 function renderSettingsLayerList(){
   const el=document.getElementById('settings-layer-list');if(!el)return;
-  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon); // 지도 마커용 (GPS 있는 것만)
   let html='';
 
-  // 프로젝트 목록 수집 (사진 + 레이어 통합)
+  // 프로젝트 목록 수집: 사진은 GPS 유무 관계없이 allPhotos 기준 + 레이어 통합
   const projSet=new Set();
-  gpsPhotos.forEach(p=>projSet.add(p.projectName||'미분류'));
+  allPhotos.forEach(p=>projSet.add(p.projectName||'미분류')); // GPS 없는 사진도 포함
   allLayers.forEach(l=>projSet.add(l.projectName||l.project||'미분류'));
 
   // projects DB 순서대로 정렬
@@ -1615,8 +1616,9 @@ function renderSettingsLayerList(){
   });
 
   sortedProjs.forEach(proj=>{
-    // 이 프로젝트의 사진
-    const projPhotos=gpsPhotos.filter(p=>(p.projectName||'미분류')===proj);
+    // 사진 행: 전체 사진 수 표시 (GPS 있는 것만 지도에 찍히지만 목록엔 전체)
+    const projPhotos=allPhotos.filter(p=>(p.projectName||'미분류')===proj);
+    const projGpsPhotos=gpsPhotos.filter(p=>(p.projectName||'미분류')===proj);
     const photoKey=proj==='미분류'?'none':proj;
     const photoOn=photoLayerVisible[photoKey]!==false;
 
@@ -1645,12 +1647,12 @@ function renderSettingsLayerList(){
     if(projPhotos.length>0){
       html+=`<div class="layer-item" style="padding-left:8px">
         <div style="font-size:16px;flex-shrink:0">📸</div>
-        <div class="layer-info"><div class="layer-name">사진</div><div class="layer-sub">${projPhotos.length}장</div></div>
+        <div class="layer-info"><div class="layer-name">사진</div><div class="layer-sub">${projPhotos.length}장 (GPS ${projGpsPhotos.length}장)</div></div>
         <button class="toggle-btn ${photoOn?'on':'off'}" onclick="togglePhotoLayer('${photoKey}')"></button>
       </div>`;
     }
 
-    // 레이어 행 (개별)
+    // 레이어 행 (개별) — 없으면 forEach 스킵되므로 body 닫기는 forEach 후에 별도 처리
     projLayers.forEach(({l,idx})=>{
       const eKey='lx'+idx;
       const isExp=expandedLayers.has(eKey);
@@ -1685,10 +1687,10 @@ function renderSettingsLayerList(){
         <div class="symbol-grid">${Object.entries(SYMBOL_LABELS).map(([s,lb])=>`<button class="symbol-btn ${sym===s?'on':''}" onclick="setLayerSymbol(${idx},'${s}')" title="${s}">${makeSymbolHtml(l.color,s,18)}</button>`).join('')}</div>
       </div>`;
     });
-    html+='</div>'; // layer-proj-body 닫기
+    html+='</div>'; // layer-proj-body 닫기 (사진만 있어도 항상 닫힘)
   });
 
-  if(!gpsPhotos.length&&!allLayers.length)
+  if(!allPhotos.length&&!allLayers.length)
     html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
   el.innerHTML=html;
   updateBlCount();
