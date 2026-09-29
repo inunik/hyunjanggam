@@ -40,16 +40,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .nb span{font-size:10px;font-weight:600}
 
 /* ── 바텀 패널 ── */
-.bottom-panel{position:absolute;bottom:0;left:0;right:0;z-index:2000;
+.bottom-panel{position:fixed;bottom:0;left:0;right:0;z-index:2000;
   background:var(--surf);border-top:1px solid var(--border);border-radius:20px 20px 0 0;
-  transform:translateY(100%);transition:transform .3s ease;max-height:75vh;display:flex;flex-direction:column}
+  transform:translateY(100%);transition:transform .3s ease;max-height:80vh;display:flex;flex-direction:column}
 .bottom-panel.open{transform:translateY(0)}
 .panel-hdr{display:flex;align-items:center;justify-content:space-between;
   padding:16px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
 .panel-hdr h3{font-size:15px;font-weight:700}
 .panel-body{flex:1;overflow-y:auto}
 .close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;font-size:16px}
-.add-row{padding:10px 16px calc(20px + var(--nav-safe,0px));flex-shrink:0}
+.add-row{padding:10px 16px calc(16px + var(--bottom-inset,60px));flex-shrink:0}
 .add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);border:1px dashed var(--accent);
   border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
 .no-items{padding:24px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
@@ -907,14 +907,18 @@ setInterval(()=>{
 (function(){
   try{
     function applyNavSafe(){
-      // 소프트 키보드가 없을 때: innerHeight - visualViewport.height = 네비바 높이
       const vv = window.visualViewport;
       const diff = vv ? Math.round(window.innerHeight - vv.height) : 0;
-      // diff가 0~200 범위일 때만 네비바로 판단 (키보드는 200px 이상)
-      const navH = (diff > 0 && diff < 200) ? diff : 0;
-      document.documentElement.style.setProperty('--nav-safe', navH + 'px');
+      // 0~200px = 시스템 네비바, 200px 이상 = 소프트 키보드라 제외
+      const sysNavH = (diff > 4 && diff < 200) ? diff : 0;
+      document.documentElement.style.setProperty('--nav-safe', sysNavH + 'px');
+      // fixed 패널용: 앱 탭바 높이 + 시스템 네비바 합산 → --bottom-inset
+      const appNav = document.querySelector('.nav');
+      const appNavH = appNav ? Math.round(appNav.getBoundingClientRect().height) : 60;
+      document.documentElement.style.setProperty('--bottom-inset', (sysNavH + appNavH) + 'px');
     }
     applyNavSafe();
+    window.addEventListener('load', applyNavSafe);
     if(window.visualViewport) window.visualViewport.addEventListener('resize', applyNavSafe);
     window.addEventListener('resize', applyNavSafe);
 
