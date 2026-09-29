@@ -94,7 +94,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
   text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
 .hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
-.cam-ctrl{padding:16px 20px calc(28px + var(--nav-safe,0px));background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
+.cam-ctrl{padding:16px 20px calc(28px + var(--cam-bottom,0px));background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
   display:flex;flex-direction:column;gap:12px}
 .proj-select-row{display:flex;gap:8px;align-items:center}
 .proj-chip{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);
@@ -904,11 +904,37 @@ setInterval(()=>{
   const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
 },10000);
 
-// ===== 시스템 네비바 보정 =====
-// --nav-safe: MainActivity.java의 WindowInsetsCompat → injectNavSafe() → evaluateJavascript() 로 주입.
-// 네비바 동적 켜기/끄기, 회전 모두 Java 쪽에서 자동 재주입하므로 JS에서 별도 감지 불필요.
+// ===== 시스템 네비바 + 앱 탭바 하단 보정 =====
+// Java(WindowInsetsCompat)가 --nav-safe를 주입하면 그걸 사용.
+// APK 구버전 폴백: visualViewport로 시스템 네비바 높이 감지.
+// cam-ctrl의 --cam-bottom = 시스템 네비바(--nav-safe) + 앱 탭바(.nav 높이)
 (function(){
   try{
+    function applyNavSafe(){
+      // Java가 이미 주입했으면 그 값 사용, 아니면 visualViewport로 감지
+      const injected = parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue('--nav-safe-injected')||'0'
+      );
+      let navH = injected;
+      if(!navH){
+        const vv = window.visualViewport;
+        const diff = vv ? Math.round(window.innerHeight - vv.height) : 0;
+        navH = (diff > 4 && diff < 300) ? diff : 0;
+      }
+      document.documentElement.style.setProperty('--nav-safe', navH + 'px');
+
+      // 앱 탭바(.nav) 높이 측정 → cam-ctrl 하단 여유 계산
+      const navEl = document.querySelector('.nav');
+      const navBarH = navEl ? navEl.getBoundingClientRect().height : 60;
+      // cam-ctrl 하단 여유 = 앱 탭바 높이 + 시스템 네비바 높이 + 여유 8px
+      // (cam-overlay는 .content 기준 inset:0이므로 .nav 위치까지가 bottom)
+      document.documentElement.style.setProperty('--cam-bottom', (navH + 8) + 'px');
+    }
+    applyNavSafe();
+    window.addEventListener('load', applyNavSafe);
+    if(window.visualViewport) window.visualViewport.addEventListener('resize', applyNavSafe);
+    window.addEventListener('resize', applyNavSafe);
+
     // 태블릿/폴더블 촬영버튼 보정
     if(window.innerWidth>=560){
       document.documentElement.classList.add('tab-wide');
