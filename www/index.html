@@ -1,0 +1,2839 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>현장캠</title>
+<link rel="stylesheet" href="leaflet.min.css"
+  onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0F1117;--surf:#1A1D27;--surf2:#242836;
+  --accent:#FF6B00;--accent-dim:rgba(255,107,0,.15);
+  --text:#E8EAED;--dim:#8B949E;--gps:#00E5A0;--danger:#FF4444;--border:#2D3142;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none} /* 100vh 폴백: 구형 WebView는 dvh 미지원 → 높이 0 → 화면 안 그려짐(태블릿 증상) */
+
+/* ── 공통 ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.hdr h1 span{color:var(--accent)}
+.gps-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);font-family:monospace}
+.gps-dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+.gps-dot.on{background:var(--gps);box-shadow:0 0 6px var(--gps)}
+.hdr-icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hdr-icon-btn svg{width:16px;height:16px}
+
+.content{flex:1;overflow:hidden;position:relative}
+.pane{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto}
+.pane.active{display:flex}
+
+.nav{display:flex;background:var(--surf);border-top:1px solid var(--border);flex-shrink:0;padding-bottom:var(--nav-safe,0px)}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 4px;background:none;border:none;color:var(--dim);cursor:pointer}
+.nb.on{color:var(--accent)}
+.nb svg{width:22px;height:22px}
+.nb span{font-size:10px;font-weight:600}
+
+/* ── 바텀 패널 ── */
+.bottom-panel{position:absolute;bottom:0;left:0;right:0;z-index:2000;
+  background:var(--surf);border-top:1px solid var(--border);border-radius:20px 20px 0 0;
+  transform:translateY(100%);transition:transform .3s ease;max-height:75vh;display:flex;flex-direction:column}
+.bottom-panel.open{transform:translateY(0)}
+.panel-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.panel-hdr h3{font-size:15px;font-weight:700}
+.panel-body{flex:1;overflow-y:auto}
+.close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;font-size:16px}
+.add-row{padding:10px 16px calc(20px + var(--nav-safe,0px));flex-shrink:0}
+.add-btn-outline{width:100%;padding:12px;background:var(--accent-dim);border:1px dashed var(--accent);
+  border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
+.no-items{padding:24px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
+
+/* ── 프로젝트 아이템 ── */
+.proj-item{display:flex;align-items:center;gap:10px;padding:14px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer}
+.proj-item:active{background:var(--surf2)}
+.proj-item-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.proj-item-info{flex:1;min-width:0}
+.proj-item-name{font-size:14px;font-weight:600}
+.proj-item-cnt{font-size:11px;color:var(--dim)}
+.proj-item-check{font-size:18px;color:var(--accent);width:20px;text-align:center}
+.proj-del-btn{width:32px;height:32px;border-radius:8px;border:none;
+  background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.proj-del-btn svg{width:14px;height:14px}
+
+/* ── 모달 ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4000;align-items:flex-end;display:none}
+.modal-overlay.show{display:flex}
+.modal-card{background:var(--surf);border-radius:20px 20px 0 0;padding:24px;padding-bottom:calc(24px + var(--nav-safe,0px));width:100%;max-width:520px;margin:0 auto;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--dim);margin-bottom:16px}
+.modal-inp{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:12px;font-size:14px;outline:none;-webkit-appearance:none;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px}
+.modal-btn{flex:1;padding:14px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer}
+.modal-btn.cancel{background:var(--surf2);color:var(--dim)}
+.modal-btn.confirm{background:var(--accent);color:#fff}
+
+/* ── 카메라 ── */
+#t-cam{background:#000;position:relative}
+#video{width:100%;height:100%;object-fit:cover}
+#canvas{display:none}
+.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
+.hud{padding:16px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);pointer-events:none}
+.hud-proj{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px;
+  text-shadow:0 1px 4px rgba(0,0,0,.9);display:flex;align-items:center;gap:8px}
+.hud-proj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.hud-desc{font-size:12px;color:rgba(255,255,255,.75);margin-bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.hud-gps{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);
+  text-shadow:0 0 8px rgba(0,229,160,.4);line-height:1.65}
+.hud-gps .lb{color:rgba(255,255,255,.45);font-size:9px;margin-right:3px}
+.cam-ctrl{padding:16px 20px calc(28px + var(--nav-safe,0px));background:linear-gradient(to top,rgba(0,0,0,.88),transparent);
+  display:flex;flex-direction:column;gap:12px}
+.proj-select-row{display:flex;gap:8px;align-items:center}
+.proj-chip{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:10px 14px;color:#fff;cursor:pointer;min-width:0}
+.proj-chip-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;background:var(--dim)}
+.proj-chip-label{flex:1;font-size:13px;font-weight:600;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.desc-inp{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:10px;color:#fff;padding:10px 14px;font-size:13px;outline:none;-webkit-appearance:none}
+.desc-inp::placeholder{color:rgba(255,255,255,.35)}
+.cap-row{display:flex;align-items:center;justify-content:center;gap:28px;padding-bottom:var(--tab-safe,0px)}
+.cap-btn{width:74px;height:74px;border-radius:50%;background:var(--accent);
+  border:4px solid rgba(255,255,255,.3);box-shadow:0 0 0 2px var(--accent),0 4px 20px rgba(255,107,0,.4);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s}
+.cap-btn:active{transform:scale(.9)}
+.cap-btn svg{width:30px;height:30px;color:#fff}
+.side-btn{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.side-btn svg{width:20px;height:20px}
+.start-screen{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;background:var(--bg)}
+.start-screen svg{width:56px;height:56px;opacity:.3}
+.start-screen p{color:var(--dim);font-size:14px}
+.start-btn{padding:14px 36px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+
+/* ── 갤러리 ── */
+#t-gal{padding:16px;gap:0}
+.gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.gal-hdr h2{font-size:15px;font-weight:700}
+.gal-cnt{font-size:12px;color:var(--dim)}
+.gal-filter{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.gal-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:16px;
+  border:1px solid var(--border);background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.gal-chip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.gal-chip-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.photo-item{background:var(--surf);border-radius:12px;overflow:hidden;
+  display:flex;border:1px solid var(--border);margin-bottom:10px}
+.thumb{width:88px;height:88px;object-fit:cover;flex-shrink:0;cursor:pointer}
+.pmeta{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0;gap:2px}
+.pproj{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.pproj-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pdesc{font-size:12px;color:var(--text);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcoords{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.4}
+.ptime{font-size:10px;color:var(--dim)}
+.pacts{display:flex;flex-direction:column;justify-content:center;padding:8px;gap:8px}
+.ibtn{width:34px;height:34px;border-radius:8px;border:none;background:var(--surf2);color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ibtn.del{background:rgba(255,68,68,.1);color:var(--danger)}
+.ibtn svg{width:15px;height:15px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--dim);padding:40px;text-align:center}
+.empty svg{width:48px;height:48px;opacity:.25}
+.empty p{font-size:14px}
+.empty small{font-size:12px;opacity:.6}
+
+/* ── 지도 ── */
+#t-map{overflow:hidden}
+#map{position:absolute;inset:0}
+.map-fab{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.mfab{width:42px;height:42px;border-radius:10px;background:var(--surf);border:1px solid var(--border);
+  color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.mfab svg{width:18px;height:18px}
+.coord-title{font-size:10px;color:var(--dim);margin-bottom:3px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.coord-val{font-family:'Courier New',monospace;font-size:12px;color:var(--gps);margin-bottom:8px;line-height:1.5}
+.addr-val{font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5;word-break:keep-all}
+.copy-row{display:flex;gap:6px}
+.copy-btn{flex:1;padding:7px 8px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.copy-btn.sec{background:var(--surf2);color:var(--text)}
+
+/* ── 설정 패널 ── */
+.settings-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;display:none}
+.settings-overlay.show{display:block}
+.settings-panel{position:fixed;top:0;right:0;bottom:0;width:min(340px,92vw);
+  background:var(--surf);border-left:1px solid var(--border);z-index:5001;
+  transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.settings-panel.open{transform:translateX(0)}
+.set-section{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--dim);margin:16px 0 8px}
+.set-card{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:0}
+.set-label{font-size:13px;font-weight:600;margin-bottom:2px}
+.set-sub{font-size:11px;color:var(--dim)}
+.set-inp{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:9px 12px;font-size:13px;outline:none;-webkit-appearance:none;min-width:0}
+.set-save-btn{padding:9px 14px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+.set-key-status{font-size:11px;margin-top:6px;min-height:16px}
+.map-type-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.map-type-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surf);color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;min-width:60px}
+.map-type-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.url-input-row{display:flex;gap:8px}
+.url-inp{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:10px 12px;font-size:12px;outline:none;-webkit-appearance:none;min-width:0}
+.url-inp::placeholder{color:var(--dim)}
+.url-load-btn{padding:10px 12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
+
+/* ── 레이어 아이템 ── */
+.layer-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.layer-item:last-child{border-bottom:none}
+.layer-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.layer-info{flex:1;min-width:0}
+.layer-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-sub{font-size:11px;color:var(--dim)}
+.toggle-btn{width:44px;height:26px;border-radius:13px;border:none;cursor:pointer;
+  flex-shrink:0;transition:background .2s;position:relative}
+.toggle-btn.on{background:var(--accent)}
+.toggle-btn.off{background:var(--surf2)}
+.toggle-btn::after{content:'';position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle-btn.on::after{left:21px}
+.toggle-btn.off::after{left:3px}
+.del-btn{width:30px;height:30px;border-radius:8px;border:none;background:rgba(255,68,68,.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.del-btn svg{width:14px;height:14px}
+.ord-btn{width:26px;height:26px;border-radius:6px;border:none;background:var(--surf2);
+  color:var(--dim);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ord-btn:disabled{opacity:.25;cursor:default}
+.layer-proj-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0 4px;margin-top:8px;border-top:1px solid var(--border)}
+.layer-proj-hdr:first-child{border-top:none;margin-top:0}
+.layer-proj-name{font-size:12px;font-weight:700;color:var(--text)}
+.layer-proj-toggle{font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600}
+
+/* 레이어 확장 패널 (색상+아이콘) */
+.layer-expand{background:var(--bg);border-radius:8px;padding:8px 10px;margin:2px 0 6px;display:none}
+.layer-expand.show{display:block}
+.expand-label{font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.color-grid{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.color-chip{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer;transition:transform .1s}
+.color-chip.on{border-color:#fff;transform:scale(1.2)}
+.color-chip:active{transform:scale(0.9)}
+.symbol-grid{display:flex;flex-wrap:wrap;gap:5px}
+.symbol-btn{width:32px;height:32px;border-radius:7px;border:2px solid transparent;
+  background:var(--surf2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s}
+.symbol-btn.on{border-color:var(--accent);background:var(--accent-dim)}
+.symbol-btn:active{opacity:.7}
+.mv-btn{flex:1;padding:8px 0;background:var(--surf2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.mv-btn:active{background:var(--accent-dim);border-color:var(--accent)}
+.layer-drag-ghost{position:fixed;z-index:9999;pointer-events:none;display:none;
+  background:var(--surf2);color:var(--text);border:1px solid var(--accent);border-radius:8px;
+  padding:10px 12px;font-size:13px;font-weight:600;box-shadow:0 10px 28px rgba(0,0,0,.55);opacity:.95}
+.drag-handle{cursor:grab;color:var(--dim);padding:0 5px;font-size:18px;user-select:none;touch-action:none}
+.layer-item.drag-over{border-top:2px solid var(--accent) !important;margin-top:-2px}
+.layer-item.dragging{opacity:.35;background:var(--surf2)}
+
+/* ── 내보내기 카드 ── */
+.exp-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.exp-all-card{border-style:dashed;border-color:var(--dim)}
+.exp-card-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.exp-proj-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.exp-proj-info{flex:1;min-width:0}
+.exp-proj-name{font-size:14px;font-weight:700}
+.exp-proj-stat{font-size:11px;color:var(--dim);margin-top:2px}
+.exp-fmt-row{display:flex;gap:8px}
+.exp-fmt-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:10px 6px;border-radius:10px;border:none;cursor:pointer;transition:opacity .15s}
+.exp-fmt-btn:active{opacity:.75}
+.exp-fmt-btn span:first-child{font-size:20px}
+.exp-fmt-btn span:nth-child(2){font-size:12px;font-weight:700}
+.exp-fmt-btn small{font-size:10px;opacity:.7}
+.exp-fmt-btn.kmz{background:rgba(255,107,0,.15);color:#FF6B00}
+.exp-fmt-btn.kml{background:rgba(33,150,243,.15);color:#2196F3}
+.exp-fmt-btn.geo{background:rgba(76,175,80,.15);color:#4CAF50}
+.exp-no-gps{font-size:12px;color:var(--dim);text-align:center;padding:8px;background:var(--surf);border-radius:8px}
+.imp-banner{display:flex;align-items:center;gap:12px;padding:14px;
+  background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.25);border-radius:12px;cursor:pointer;margin-bottom:10px}
+.imp-banner:active{opacity:.8}
+.imp-icon{font-size:28px;flex-shrink:0}
+.imp-info{flex:1}
+.imp-title{font-size:14px;font-weight:700;color:var(--gps)}
+.imp-sub{font-size:11px;color:var(--dim);margin-top:2px}
+.imp-arr{font-size:22px;color:var(--gps);opacity:.6}
+.imp-prog{display:none;align-items:center;gap:10px;padding:10px 0}
+.imp-prog.show{display:flex}
+.prog-wrap{flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden}
+.prog-bar{height:100%;background:var(--gps);border-radius:2px;transition:width .2s;width:0%}
+.exp-btn-full{width:100%;padding:14px;background:var(--surf2);border:none;border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;margin-top:8px}
+.exp-btn-full:active{opacity:.8}
+
+/* ── 라이트박스 ── */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center}
+.lightbox.show{display:flex}
+.lightbox img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:8px}
+.lightbox-meta{font-family:'Courier New',monospace;font-size:11px;color:var(--gps);text-align:center;line-height:1.6;padding:12px 20px 0}
+.lightbox-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer}
+
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--surf2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;
+  font-size:13px;font-weight:500;white-space:nowrap;opacity:0;transition:all .2s;z-index:9999;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* 파일 읽기 실패 상세 오류 다이얼로그 (토스트는 3초 후 사라져 원인을 놓치는 문제 방지) */
+.err-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:none;align-items:center;justify-content:center;padding:24px}
+.err-card{background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:18px;max-width:420px;width:100%;max-height:70vh;display:flex;flex-direction:column}
+.err-title{font-size:15px;font-weight:700;margin-bottom:8px}
+.err-msg{font-size:12px;font-family:'Courier New',monospace;color:var(--text);background:var(--surf2);
+  border:1px solid var(--border);border-radius:8px;padding:10px;white-space:pre-wrap;word-break:break-all;
+  overflow:auto;flex:1;min-height:60px}
+.err-btns{display:flex;gap:8px;margin-top:14px}
+.err-btn{flex:1;border:none;border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;cursor:pointer}
+.err-btn.copy{background:var(--surf2);color:var(--text);border:1px solid var(--border)}
+.err-btn.ok{background:var(--accent);color:#fff}
+/* 블랙리스트 관리 */
+.bl-restore-btn{flex-shrink:0;background:rgba(76,175,80,.12);border:1px solid rgba(76,175,80,.4);color:var(--gps);
+  border-radius:7px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
+
+@keyframes pulse{
+  0%{box-shadow:0 0 0 4px rgba(33,150,243,0.25),0 2px 8px rgba(0,0,0,0.3)}
+  50%{box-shadow:0 0 0 8px rgba(33,150,243,0.1),0 2px 8px rgba(0,0,0,0.3)}
+  100%{box-shadow:0 0 0 4px rgba(33,150,243,0.25),0 2px 8px rgba(0,0,0,0.3)}
+}
+
+.leaflet-popup-content-wrapper{background:var(--surf)!important;color:var(--text)!important;
+  border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
+.leaflet-popup-tip{background:var(--surf)!important}
+.popup-img{width:100%;max-width:200px;border-radius:6px;margin-bottom:8px;cursor:pointer}
+.popup-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.popup-desc{font-size:11px;color:var(--dim);margin-bottom:4px}
+.popup-meta{font-family:'Courier New',monospace;font-size:10px;color:var(--gps);line-height:1.6}
+#cap-btn.gps-ok{box-shadow:0 0 0 5px rgba(76,175,80,.35)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>현장<span>캠</span></h1>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="gps-pill">
+      <div class="gps-dot" id="gps-dot"></div>
+      <span id="gps-txt">GPS 대기</span>
+    </div>
+    <button class="hdr-icon-btn" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v2M12 20v2M2 12H4M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- 설정 패널 -->
+<div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
+    <h3>설정</h3>
+    <button class="close-btn" onclick="closeSettings()">✕</button>
+  </div>
+  <div style="padding:16px;overflow-y:auto;flex:1">
+
+    <div class="set-section">저장 위치</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-label">📁 현장캠 폴더</div>
+      <div class="set-sub" id="base-path-display" style="margin-top:4px;word-break:break-all">내부저장소/현장캠/</div>
+      <div style="font-size:10px;color:var(--accent);margin-top:6px">파일관리자 · USB에서 접근 가능</div>
+    </div>
+
+    <div class="set-section">지도</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-label" style="margin-bottom:8px">🇰🇷 국내용</div>
+      <div class="map-type-btns" style="margin-bottom:12px">
+        <button class="map-type-btn on" id="mtype-vworld" onclick="setMapType('vworld')">VWorld</button>
+        <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️ VWorld위성</button>
+        <button class="map-type-btn" id="mtype-vworld-gray" onclick="setMapType('vworld-gray')">지적도</button>
+      </div>
+      <div style="font-size:10px;color:var(--gps);margin-bottom:12px">↑ 지적도는 API 키 필요 (무료)</div>
+      <div class="set-label" style="margin-bottom:8px">🌏 해외용</div>
+      <div class="map-type-btns">
+        <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ ESRI위성</button>
+        <button class="map-type-btn" id="mtype-osm" onclick="setMapType('osm')">OSM</button>
+      </div>
+    </div>
+
+    <div class="set-section">VWorld API 키 (지적도용)</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-sub">api.vworld.kr 무료 발급</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input class="set-inp" id="vworld-key-inp" type="text" placeholder="API 키 붙여넣기" autocomplete="off">
+        <button class="set-save-btn" onclick="saveVWorldKey()">저장</button>
+      </div>
+      <div class="set-key-status" id="vworld-key-status"></div>
+    </div>
+
+    <div class="set-section">레이어 관리</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div id="settings-layer-list" style="margin-bottom:10px"></div>
+      <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
+        onclick="document.getElementById('file-inp').click()">
+        📁 파일 선택 (SHP · KML · KMZ · GeoJSON)
+      </button>
+      <button class="add-btn-outline" style="width:100%;margin-bottom:8px;border-color:var(--gps);color:var(--gps)"
+        onclick="manualScanFolders()">
+        🔍 폴더에서 파일 읽기 (USB로 넣은 파일)
+      </button>
+      <div class="url-input-row">
+        <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
+        <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
+      </div>
+      <button class="add-btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)"
+        onclick="openBlacklistManager()">
+        🚫 삭제한 파일 목록 (블랙리스트) <span id="bl-count"></span>
+      </button>
+    </div>
+
+    <div class="set-section">내보내기 / 가져오기</div>
+    <div style="padding:0">
+      <div id="settings-exp-list"></div>
+      <div class="imp-banner" onclick="document.getElementById('kmz-import-inp').click()">
+        <div class="imp-icon">📥</div>
+        <div class="imp-info">
+          <div class="imp-title">KMZ 가져오기</div>
+          <div class="imp-sub">다른 사람이 내보낸 KMZ 합치기</div>
+        </div>
+        <div class="imp-arr">›</div>
+      </div>
+      <div class="imp-prog" id="import-prog">
+        <span id="import-prog-txt" style="font-size:12px;flex-shrink:0">처리 중...</span>
+        <div class="prog-wrap"><div class="prog-bar" id="import-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="set-section">데이터</div>
+    <button class="exp-btn-full" style="background:rgba(255,68,68,.1);color:var(--danger)" onclick="clearAll()">
+      🗑 전체 삭제
+    </button>
+
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ===== 카메라 ===== -->
+  <div class="pane active" id="t-cam">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <div class="start-screen" id="start-screen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p>아래 버튼을 눌러 카메라를 시작하세요</p>
+      <button class="start-btn" onclick="startCamera()">📷 카메라 시작</button>
+    </div>
+    <div class="cam-overlay" id="cam-overlay" style="display:none">
+      <div class="hud">
+        <div class="hud-proj">
+          <div class="hud-proj-dot" id="hud-dot" style="background:var(--dim)"></div>
+          <span id="hud-proj">프로젝트 없음</span>
+        </div>
+        <div class="hud-desc" id="hud-desc" style="display:none"></div>
+        <div class="hud-gps">
+          <div><span class="lb">LAT</span><span id="hud-lat">---.------</span></div>
+          <div><span class="lb">LON</span><span id="hud-lon">---.------</span></div>
+          <div><span class="lb">ALT</span><span id="hud-alt">---</span>m &nbsp;<span class="lb">ACC</span><span id="hud-acc">--</span>m</div>
+          <div><span class="lb">TIME</span><span id="hud-time">--.--.-- --:--</span></div>
+        </div>
+      </div>
+      <div class="cam-ctrl">
+        <div class="proj-select-row">
+          <button class="proj-chip" onclick="openProjPanel()">
+            <div class="proj-chip-dot" id="chip-dot"></div>
+            <span class="proj-chip-label" id="chip-label">프로젝트 선택 ▾</span>
+          </button>
+        </div>
+        <input class="desc-inp" id="desc-inp" type="text"
+          placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열)" maxlength="60" oninput="updateHUD()">
+        <div class="cap-row">
+          <button class="side-btn" onclick="goTab('map')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+              <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+            </svg>
+          </button>
+          <button class="cap-btn" id="cap-btn" onclick="capture()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+          </button>
+          <button class="side-btn" onclick="goTab('gal')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프로젝트 선택 패널 -->
+    <div class="bottom-panel" id="proj-panel">
+      <div class="panel-hdr">
+        <h3>프로젝트 선택</h3>
+        <button class="close-btn" onclick="closeProjPanel()">✕</button>
+      </div>
+      <div class="panel-body" id="proj-select-list"></div>
+      <div class="add-row">
+        <button class="add-btn-outline" onclick="closeProjPanel();openNewProjModal()">+ 새 프로젝트 추가</button>
+      </div>
+    </div>
+
+    <!-- 새 프로젝트 모달 -->
+    <div class="modal-overlay" id="new-proj-modal">
+      <div class="modal-card">
+        <div class="modal-title">새 프로젝트 추가</div>
+        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeNewProjModal()">취소</button>
+          <button class="modal-btn confirm" onclick="confirmNewProj()">추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 갤러리 ===== -->
+  <div class="pane" id="t-gal">
+    <div class="gal-hdr">
+      <h2>사진 목록</h2>
+      <span class="gal-cnt" id="gal-cnt">0장</span>
+    </div>
+    <div class="gal-filter" id="gal-filter"></div>
+    <div id="gal-list"></div>
+  </div>
+
+  <!-- ===== 지도 ===== -->
+  <div class="pane" id="t-map">
+    <div id="map"></div>
+    <div class="map-fab">
+      <button class="mfab" onclick="locateMe()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        </svg>
+      </button>
+      <button class="mfab" onclick="refreshMarkers()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 레이어 프로젝트 선택 -->
+    <div class="bottom-panel" id="layer-proj-panel">
+      <div class="panel-hdr">
+        <div>
+          <h3>프로젝트 선택</h3>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px" id="layer-panel-fname"></div>
+        </div>
+        <button class="close-btn" onclick="cancelLayerProj()">✕</button>
+      </div>
+      <div class="panel-body" id="layer-proj-list"></div>
+      <div class="add-row">
+        <button class="add-btn-outline" onclick="openNewProjFromLayer()">+ 새 프로젝트 추가</button>
+      </div>
+    </div>
+
+    <!-- 레이어용 새 프로젝트 모달 -->
+    <div class="modal-overlay" id="layer-new-proj-modal">
+      <div class="modal-card">
+        <div class="modal-title">새 프로젝트 추가</div>
+        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="layer-new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeLayerNewProj()">취소</button>
+          <button class="modal-btn confirm" onclick="confirmLayerNewProj()">추가 후 선택</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="file-inp"
+      accept="*/*"
+      multiple style="display:none" onchange="onFileSelected(event)">
+    <input type="file" id="kmz-import-inp" accept="*/*" style="display:none" onchange="onImportKMZ(event)">
+    <div id="layer-drag-ghost" class="layer-drag-ghost"></div>
+  </div>
+
+</div>
+
+<nav class="nav">
+  <button class="nb on" id="nb-cam" onclick="goTab('cam')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span>카메라</span>
+  </button>
+  <button class="nb" id="nb-gal" onclick="goTab('gal')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+    <span>목록</span>
+  </button>
+  <button class="nb" id="nb-map" onclick="goTab('map')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+      <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+    </svg>
+    <span>지도</span>
+  </button>
+</nav>
+
+<!-- 라이트박스 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="">
+  <div class="lightbox-meta" id="lb-meta"></div>
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+</div>
+
+<!-- 파일 읽기 실패 상세 오류 다이얼로그 -->
+<div class="err-overlay" id="err-overlay">
+  <div class="err-card">
+    <div class="err-title">⚠️ 파일을 읽지 못했어요</div>
+    <div class="err-msg" id="err-msg"></div>
+    <div class="err-btns">
+      <button class="err-btn copy" onclick="copyErrDetail()">복사</button>
+      <button class="err-btn ok" onclick="closeErrDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 라이브러리 로드 (로컬 우선, CDN 폴백) =====
+function loadScript(local,cdn){
+  return new Promise(res=>{
+    const s=document.createElement('script');s.src=local;
+    s.onload=res;
+    s.onerror=()=>{const s2=document.createElement('script');s2.src=cdn;s2.onload=res;document.head.appendChild(s2);};
+    document.head.appendChild(s);
+  });
+}
+async function loadLibs(){
+  await loadScript('leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js');
+  await loadScript('jszip.min.js','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  await loadScript('shp.min.js','https://unpkg.com/shpjs@latest/dist/shp.min.js');
+  await loadScript('proj4.js','https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js');
+  if(typeof proj4!=='undefined'){
+    // 한국 좌표계 정의 (EPSG 공식값 준수 — epsg.io 기준 2026-09 확인)
+    // Bessel(Korean 1985) 변환파라미터: TOWGS84[-145.907,505.034,685.756,-1.162,2.347,1.592,6.342]
+    proj4.defs('EPSG:5173','+proj=tmerc +lat_0=38 +lon_0=125.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 서부원점
+    proj4.defs('EPSG:5174','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 중부원점
+    proj4.defs('EPSG:5175','+proj=tmerc +lat_0=38 +lon_0=127.0028902777778 +k=1 +x_0=200000 +y_0=550000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 중부원점(제주)
+    proj4.defs('EPSG:5176','+proj=tmerc +lat_0=38 +lon_0=129.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 동부원점
+    proj4.defs('EPSG:5177','+proj=tmerc +lat_0=38 +lon_0=131.002890277778 +k=1 +x_0=200000 +y_0=500000 +ellps=bessel +towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342 +units=m +no_defs'); // 변형 동해원점(울릉도)
+    proj4.defs('EPSG:5179','+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs'); // UTM-K 통합원점 (공식: k=0.9996, 편차 1M/2M)
+    proj4.defs('EPSG:5181','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 중부원점
+    proj4.defs('EPSG:5185','+proj=tmerc +lat_0=38 +lon_0=125 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 서부원점(2010)
+    proj4.defs('EPSG:5186','+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 중부원점(2010)
+    proj4.defs('EPSG:5187','+proj=tmerc +lat_0=38 +lon_0=129 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 동부원점(2010)
+    proj4.defs('EPSG:5188','+proj=tmerc +lat_0=38 +lon_0=131 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs'); // KGD2002 동해원점(2010)
+  }
+  // 라이브러리 로드 완료 후 앱 초기화
+  if(typeof initApp === 'function') initApp();
+  else window.addEventListener('appReady', initApp);
+}
+loadLibs();
+</script>
+<script>
+// ===== 상수 =====
+const IS_APK = !!window.AndroidBridge;
+const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','#00BCD4','#FF5722'];
+const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4'];
+let layerColorIdx=0;
+
+// 레이어 색상 팔레트
+const COLOR_PALETTE=['#FF4444','#FF6B00','#FFA500','#FFDD00','#00CC44','#00BCD4',
+  '#2196F3','#9C27B0','#E91E63','#795548','#607D8B','#000000'];
+
+// 레이어 심볼
+const SYMBOLS={
+  circle: c=>`<circle cx="14" cy="14" r="11" fill="${c}" stroke="white" stroke-width="2"/>`,
+  dot:    c=>`<circle cx="14" cy="14" r="5" fill="${c}"/>`,
+  square: c=>`<rect x="3" y="3" width="22" height="22" rx="3" fill="${c}" stroke="white" stroke-width="2"/>`,
+  triangle:c=>`<polygon points="14,3 25,25 3,25" fill="${c}" stroke="white" stroke-width="1.5"/>`,
+  cross:  c=>`<line x1="4" y1="4" x2="24" y2="24" stroke="${c}" stroke-width="4" stroke-linecap="round"/><line x1="24" y1="4" x2="4" y2="24" stroke="${c}" stroke-width="4" stroke-linecap="round"/>`,
+  star:   c=>`<polygon points="14,2 17,10 26,10 19,16 22,24 14,18 6,24 9,16 2,10 11,10" fill="${c}" stroke="white" stroke-width="1"/>`,
+  heart:  c=>`<path d="M14 24s-11-7-11-14a7 7 0 0 1 14 0 7 7 0 0 1 14 0c0 7-11 14-11 14l-3 0z" fill="${c}" stroke="white" stroke-width="1"/>`,
+  moon:   c=>`<path d="M20 14a8 8 0 1 1-8-8 6 6 0 0 0 8 8z" fill="${c}"/>`
+};
+const SYMBOL_LABELS={circle:'●',dot:'•',square:'■',triangle:'▲',cross:'✕',star:'★',heart:'♥',moon:'☽'};
+
+function makeSymbolHtml(color,symbol,size=28){
+  const fn=SYMBOLS[symbol]||SYMBOLS.circle;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">${fn(color)}</svg>`;
+}
+
+let expandedLayers=new Set(); // 펼쳐진 레이어 key 목록
+
+// ===== 상태 =====
+let projects=[], allPhotos=[], allLayers=[];
+let selectedProject=null;
+let gps=null;
+let basePath='';
+
+// ===== 날짜 포맷 =====
+function fmtDt(iso){
+  const d=new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function fmtNow(){
+  const d=new Date();
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function genFilename(){
+  const d=new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}_${String(Date.now()).slice(-4)}.jpg`;
+}
+
+// ===== IndexedDB (브라우저 폴백용) =====
+let db;
+async function initDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('HyunJangCam',4);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('projects'))d.createObjectStore('projects',{keyPath:'id',autoIncrement:true});
+      if(!d.objectStoreNames.contains('layers'))d.createObjectStore('layers',{keyPath:'id',autoIncrement:true});
+    };
+    r.onsuccess=e=>{db=e.target.result;res()};r.onerror=()=>rej(r.error);
+  });
+}
+const txs=(s,m)=>db.transaction(s,m).objectStore(s);
+const dbAdd=(s,d)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').add(d);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const dbAll=(s)=>new Promise((res,rej)=>{const r=txs(s,'readonly').getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const dbDel=(s,id)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+const dbPut=(s,d)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').put(d);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+const dbClear=(s)=>new Promise((res,rej)=>{const r=txs(s,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)});
+
+// ===== 데이터 레이어 (APK/브라우저 통합) =====
+async function loadProjects(){
+  if(IS_APK){
+    projects=JSON.parse(AndroidBridge.listProjects());
+  }else{
+    projects=await dbAll('projects');
+  }
+  return projects;
+}
+
+async function createProjectData(name,color){
+  if(IS_APK){
+    AndroidBridge.createProject(name,color);
+    projects=JSON.parse(AndroidBridge.listProjects());
+    return projects.find(p=>p.name===name)||{name,color};
+  }else{
+    const id=await dbAdd('projects',{name,color,createdAt:new Date().toISOString()});
+    projects=await dbAll('projects');
+    return projects.find(p=>p.id===id);
+  }
+}
+
+async function deleteProjectData(proj){
+  if(IS_APK){
+    AndroidBridge.deleteProject(proj.name);
+  }else{
+    await dbDel('projects',proj.id);
+  }
+  await loadProjects();
+}
+
+async function loadAllPhotos(){
+  if(IS_APK){
+    allPhotos=[];
+    for(const p of projects){
+      const photos=JSON.parse(AndroidBridge.listPhotos(p.name));
+      allPhotos=allPhotos.concat(photos.map(ph=>({...ph,projectName:p.name,projectColor:p.color})));
+    }
+    // 최신순
+    allPhotos.sort((a,b)=>b.time.localeCompare(a.time));
+  }else{
+    allPhotos=await dbAll('photos');
+    allPhotos.reverse();
+  }
+  return allPhotos;
+}
+
+function getPhotoURL(photo){
+  if(IS_APK)return 'file://'+photo.path;
+  return URL.createObjectURL(photo.blob);
+}
+
+async function savePhotoData(blob,meta){
+  if(IS_APK){
+    const filename=genFilename();
+    return new Promise(res=>{
+      const reader=new FileReader();
+      reader.onload=()=>{
+        AndroidBridge.savePhoto(reader.result,meta.projectName,filename,JSON.stringify(meta));
+        res({...meta,filename,path:basePath+'/'+meta.projectName+'/사진/'+filename});
+      };
+      reader.readAsDataURL(blob);
+    });
+  }else{
+    await dbAdd('photos',{...meta,blob});
+  }
+}
+
+async function deletePhotoData(photo){
+  if(IS_APK){
+    AndroidBridge.deletePhoto(photo.path);
+  }else{
+    await dbDel('photos',photo.id);
+  }
+}
+
+async function loadAllLayers(){
+  if(IS_APK){
+    allLayers=[];
+    for(const p of projects){
+      const layers=JSON.parse(AndroidBridge.listLayers(p.name));
+      allLayers=allLayers.concat(layers.map(l=>({...l,projectName:p.name})));
+    }
+  }else{
+    allLayers=await dbAll('layers');
+  }
+  // localStorage에 저장된 순서 적용 (가장 신뢰할 수 있는 순서)
+  applyStoredLayerOrder();
+  return allLayers;
+}
+
+// localStorage 기반 순서 저장/복원
+function saveLayerOrder(){
+  const orderMap={};
+  allLayers.forEach((l,idx)=>{
+    const k=l.geojsonPath||String(l.id||l.name);
+    orderMap[k]=idx;
+  });
+  localStorage.setItem('layerOrder',JSON.stringify(orderMap));
+}
+
+function applyStoredLayerOrder(){
+  try{
+    const orderMap=JSON.parse(localStorage.getItem('layerOrder')||'{}');
+    allLayers.sort((a,b)=>{
+      const ak=a.geojsonPath||String(a.id||a.name);
+      const bk=b.geojsonPath||String(b.id||b.name);
+      // 미기록(새로 추가) 레이어는 -1 → 목록 맨 위 = 지도 맨 위 (추가 즉시 보임)
+      return (orderMap[ak]??-1)-(orderMap[bk]??-1);
+    });
+  }catch(e){
+    // fallback: order 필드로 정렬
+    allLayers.sort((a,b)=>(a.order??999)-(b.order??999));
+  }
+}
+
+async function saveLayerData(projectName,name,geojson,color,visible,symbol='circle',srcFile=''){
+  const order=allLayers.length;
+  const meta={color,visible,project:projectName,symbol,order,srcFile};
+  if(IS_APK){
+    AndroidBridge.saveLayer(projectName,name,JSON.stringify(geojson),JSON.stringify(meta));
+  }else{
+    await dbAdd('layers',{name,project:projectName,color,geojson,visible,symbol,order,srcFile});
+  }
+  await loadAllLayers();
+}
+
+// 레이어 메타 JSON 생성 (srcFile 등 전체 필드 포함 - 재스캔 중복 방지에 필수)
+function buildLayerMeta(l){
+  return JSON.stringify({color:l.color,visible:l.visible,project:l.projectName||l.project||'',
+    symbol:l.symbol||'circle',order:l.order||0,srcFile:l.srcFile||''});
+}
+
+async function toggleLayerData(layer){
+  const newVisible=!layer.visible;
+  layer.visible=newVisible;
+  if(IS_APK){
+    AndroidBridge.updateLayerMeta(layer.geojsonPath,buildLayerMeta(layer));
+  }else{
+    await dbPut('layers',{...layer,visible:newVisible});
+  }
+  return newVisible;
+}
+
+async function deleteLayerData(layer){
+  if(IS_APK){
+    AndroidBridge.deleteLayer(layer.geojsonPath);
+  }else{
+    await dbDel('layers',layer.id);
+  }
+  await loadAllLayers();
+}
+
+// ===== GPS =====
+function startGPS(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(
+    p=>{gps=p.coords;document.getElementById('gps-dot').className='gps-dot on';
+      document.getElementById('gps-txt').textContent='±'+Math.round(p.coords.accuracy)+'m';
+      const cb=document.getElementById('cap-btn');if(cb)cb.classList.add('gps-ok');
+      updateHUD();
+      updateMyLocation(p.coords); // 지도에 내 위치 업데이트
+    },
+    ()=>{document.getElementById('gps-txt').textContent='GPS 오류';const cb=document.getElementById('cap-btn');if(cb)cb.classList.remove('gps-ok');},
+    {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
+  );
+}
+function updateHUD(){
+  document.getElementById('hud-dot').style.background=selectedProject?selectedProject.color:'var(--dim)';
+  document.getElementById('hud-proj').textContent=selectedProject?selectedProject.name:'프로젝트 없음';
+  const desc=document.getElementById('desc-inp')?.value||'';
+  const de=document.getElementById('hud-desc');
+  if(desc){de.textContent='▸ '+desc;de.style.display='block';}else de.style.display='none';
+  if(!gps)return;
+  document.getElementById('hud-lat').textContent=gps.latitude.toFixed(6);
+  document.getElementById('hud-lon').textContent=gps.longitude.toFixed(6);
+  document.getElementById('hud-alt').textContent=gps.altitude?Math.round(gps.altitude):'-';
+  document.getElementById('hud-acc').textContent=Math.round(gps.accuracy);
+}
+setInterval(()=>{
+  const el=document.getElementById('hud-time');if(el)el.textContent=fmtNow();
+},10000);
+
+// ===== 시스템 네비바 높이 감지 + 하단 가림 보정 =====
+// Android WebView는 env(safe-area-inset-bottom)을 0으로 반환하는 경우가 많음.
+// visualViewport.height vs window.innerHeight 차이로 실제 네비바 높이를 감지 → --nav-safe 에 세팅.
+// 태블릿(폴더블 포함) 촬영버튼 보정은 --tab-safe 유지.
+(function(){
+  try{
+    function applyNavSafe(){
+      // 소프트 키보드가 없을 때: innerHeight - visualViewport.height = 네비바 높이
+      const vv = window.visualViewport;
+      const diff = vv ? Math.round(window.innerHeight - vv.height) : 0;
+      // diff가 0~200 범위일 때만 네비바로 판단 (키보드는 200px 이상)
+      const navH = (diff > 0 && diff < 200) ? diff : 0;
+      document.documentElement.style.setProperty('--nav-safe', navH + 'px');
+    }
+    applyNavSafe();
+    if(window.visualViewport) window.visualViewport.addEventListener('resize', applyNavSafe);
+    window.addEventListener('resize', applyNavSafe);
+
+    // 태블릿/폴더블 촬영버튼 보정 유지
+    if(window.innerWidth>=560){
+      document.documentElement.classList.add('tab-wide');
+      document.documentElement.style.setProperty('--tab-safe','64px');
+    }
+  }catch(e){}
+})();
+
+// ===== 카메라 =====
+// 다른 앱이 카메라를 선점하면 WebView 스트림이 끊겨 화면이 멈추는 문제 수정:
+// ① 백그라운드 전환 시 트랙 완전 정지, 복귀 시 재획득
+// ② 트랙이 시스템에 의해 끊기면(ended/mute) 자동 복구
+// ③ watchdog은 play() 재시도 우선, 재획득 전 기존 트랙 정리 (구버전은 누수+덮어쓰기 반복)
+let camStream=null,camWatchdog=null,camStarted=false,camStarting=false;
+let camRecovering=false,camRecoverTries=0,camFrameToken=0,camEverStarted=false;
+
+function stopCamTracks(){
+  if(camStream){camStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}});camStream=null;}
+  const v=document.getElementById('video');
+  if(v&&v.srcObject)v.srcObject=null;
+}
+
+// 카메라 획득: 후면 1080p → 후면 → 아무 카메라 순으로 완화 시도 (태블릿 호환)
+async function acquireCamera(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
+    throw new Error('이 기기 WebView는 카메라 API(getUserMedia) 미지원 — 시스템 WebView 업데이트 필요');
+  const tries=[
+    {video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false},
+    {video:{facingMode:'environment'},audio:false},
+    {video:true,audio:false}
+  ];
+  let lastErr=null;
+  for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c);}catch(e){lastErr=e;}}
+  throw lastErr||new Error('사용 가능한 카메라가 없어요');
+}
+
+function showCamError(msg){
+  const sc=document.getElementById('start-screen');
+  if(!sc)return;
+  sc.style.display='flex';
+  document.getElementById('cam-overlay').style.display='none';
+  let el=document.getElementById('cam-err');
+  if(!el){
+    el=document.createElement('div');el.id='cam-err';
+    el.style.cssText='color:var(--danger);font-size:13px;text-align:center;padding:0 24px;white-space:pre-line';
+    sc.insertBefore(el,sc.querySelector('.start-btn'));
+  }
+  el.textContent=msg;
+}
+
+async function startCamera(){
+  if(camStarting)return;
+  camStarting=true;camStarted=true;
+  try{
+    stopCamTracks(); // 잔여 트랙 정리 (재시작 시 누수·충돌 방지)
+    const stream=await acquireCamera();
+    camStream=stream;camRecoverTries=0;camEverStarted=true;
+    const v=document.getElementById('video');v.srcObject=stream;
+    if(v.play)v.play().catch(()=>{});
+    camPrevPix=null;camStillCount=0;
+    camFrameToken=(camFrameToken||0)+1;
+    if(v.requestVideoFrameCallback){
+      camFpsSupported=true;
+      const tok=camFrameToken;
+      const cb=(now)=>{if(tok!==camFrameToken||!v.srcObject||!camStarted)return;camOnFrame(now);v.requestVideoFrameCallback(cb);};
+      v.requestVideoFrameCallback(cb);
+    }else camFpsSupported=false;
+    // 트랙이 시스템에 의해 끊기면(다른 앱 선점 등) 자동 복구
+    stream.getVideoTracks().forEach(t=>{
+      t.addEventListener('ended',()=>scheduleCamRecover());
+      t.addEventListener('mute',()=>scheduleCamRecover());
+    });
+    const errEl=document.getElementById('cam-err');if(errEl)errEl.textContent='';
+    document.getElementById('start-screen').style.display='none';
+    document.getElementById('cam-overlay').style.display='flex';
+    document.getElementById('hud-time').textContent=fmtNow();
+    toast('📷 카메라 시작됨');
+    if(camWatchdog)clearInterval(camWatchdog);
+    camWatchdog=setInterval(()=>camWatchTick(v),4000);
+  }catch(e){
+    camStarted=false;
+    // 토스트는 3초 후 사라져 원인을 놓치므로 시작 화면에 지속 표시 (태블릿 원인 파악용)
+    const reason=(e&&e.name==='NotAllowedError')
+      ?'카메라 권한이 거부됐어요.\n앱 설정 → 권한에서 카메라를 허용해주세요.'
+      :String(e&&e.message||e);
+    showCamError('📷 카메라를 시작할 수 없어요\n'+reason);
+  }finally{
+    camStarting=false;
+  }
+}
+
+function scheduleCamRecover(){
+  if(camRecovering||!camStarted)return;
+  if(camRecoverTries>=5){ // 반복 실패하면 자동 재시도 중단 (배터리 보호)
+    camStarted=false;stopCamTracks();
+    showCamError('📷 카메라가 반복해서 멈춰요\n아래 버튼으로 다시 시작해주세요');
+    return;
+  }
+  camRecovering=true;camRecoverTries++;
+  setTimeout(async()=>{
+    camRecovering=false;
+    if(!camStarted)return;
+    try{await startCamera();}catch(e){}
+  },2000);
+}
+
+// 프레임 감시: 트랙은 살아있는데 WebView가 프레임만 안 그리는 '얼어붙음'은 paused/readyState로 감지 불가(사용자 증상 A)
+// ① requestVideoFrameCallback 지원: 마지막 프레임 시각 기준 6초 무프레임 → 재획득
+// ② 미지원(구형 WebView): 32x24 축소 캡처 픽셀 diff 0이 2회 연속 → 재획득
+let camLastFrameTs=0,camFpsSupported=false,camPrevPix=null,camStillCount=0;
+const camDiffCanvas=document.createElement('canvas');
+camDiffCanvas.width=32;camDiffCanvas.height=24;
+const camDiffCtx=camDiffCanvas.getContext('2d',{willReadFrequently:true});
+
+function camOnFrame(now){camLastFrameTs=now;camStillCount=0;camPrevPix=null;}
+
+function camWatchTick(v){
+  if(!v.srcObject||!camStarted)return;
+  if(v.paused||v.ended){v.play().catch(()=>{});return;} // 재생만 끊긴 경우는 재획득 불필요
+  if(v.readyState===0){scheduleCamRecover();return;}    // 신호가 죽은 경우 재획득
+  const now=performance.now();
+  if(camFpsSupported){ // rVFC 기반: 마지막 콜백 이후 6초 무프레임이면 멈춤 판정
+    if(camLastFrameTs>0&&now-camLastFrameTs>6000){camLastFrameTs=now;scheduleCamRecover();}
+    return;
+  }
+  // 폴백: 축소 캡처 픽셀 diff (저해상도라 배터리 부담 미미)
+  try{
+    camDiffCtx.drawImage(v,0,0,32,24);
+    const pix=camDiffCtx.getImageData(0,0,32,24).data;
+    if(camPrevPix){
+      let diff=0;
+      for(let i=0;i+2<pix.length;i+=4){
+        diff=Math.abs(pix[i]-camPrevPix[i])+Math.abs(pix[i+1]-camPrevPix[i+1])+Math.abs(pix[i+2]-camPrevPix[i+2]);
+        if(diff>0)break;
+      }
+      if(diff===0){
+        camStillCount++;
+        if(camStillCount>=2){camStillCount=0;camPrevPix=null;scheduleCamRecover();return;}
+      }else camStillCount=0;
+    }
+    camPrevPix=pix;
+  }catch(e){}
+}
+
+// 앱 밖으로 나갔다 돌아오면 카메라를 완전히 끄고 다시 켠다 (다른 앱 카메라 회수 대비)
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)stopCamTracks();
+  else if(camStarted)startCamera().catch(()=>{});
+});
+
+function capture(){
+  const v=document.getElementById('video');
+  if(!v.srcObject){toast('카메라를 먼저 시작해주세요');return;}
+  if(!selectedProject){toast('⚠️ 프로젝트를 먼저 선택해주세요');openProjPanel();return;}
+  const c=document.getElementById('canvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  const ctx=c.getContext('2d');ctx.drawImage(v,0,0);
+  drawStamp(ctx,c.width,c.height);
+  c.toBlob(async blob=>{
+    const meta={
+      time:new Date().toISOString(),
+      lat:gps?.latitude||null,lon:gps?.longitude||null,
+      alt:gps?.altitude||null,acc:gps?.accuracy||null,
+      projectId:selectedProject.id||null,
+      projectName:selectedProject.name,
+      projectColor:selectedProject.color,
+      description:document.getElementById('desc-inp').value||''
+    };
+    if(gps&&meta.lat!=null)blob=await injectGpsExif(blob,gps);
+    await savePhotoData(blob,meta);
+    await loadAllPhotos();
+    toast(meta.lat!=null?'📸 저장됨! (GPS 포함)':'⚠️ GPS 없이 저장됨 — 지도·내보내기에서 제외돼요');
+    const btn=document.getElementById('cap-btn');
+    btn.style.transform='scale(.85)';setTimeout(()=>btn.style.transform='',150);
+  },'image/jpeg',0.92);
+}
+
+function drawStamp(ctx,w,h){
+  const fs=Math.round(Math.min(w,h)*0.045); // 1.5배 크게
+  const pad=Math.round(w*0.022);
+  const lineH=Math.round(fs*1.6);
+
+  ctx.fillStyle='#fff';
+  ctx.font=`${fs}px sans-serif`;
+  ctx.textBaseline='top'; // 위에서부터 시작
+  ctx.shadowColor='rgba(0,0,0,0.9)';
+  ctx.shadowBlur=8;
+  ctx.shadowOffsetX=2;
+  ctx.shadowOffsetY=2;
+
+  const latS=gps?`LAT ${gps.latitude.toFixed(6)}`:'LAT N/A';
+  const lonS=gps?`LON ${gps.longitude.toFixed(6)}`:'LON N/A';
+  const altS=gps&&gps.altitude?`ALT ${Math.round(gps.altitude)}m`:'';
+
+  // ── 좌상단: 좌표 + 고도 ──
+  ctx.textAlign='left';
+  let y=pad;
+  ctx.fillText(latS,pad,y); y+=lineH;
+  ctx.fillText(lonS,pad,y); y+=lineH;
+  if(altS) ctx.fillText(altS,pad,y);
+
+  // ── 우상단: 날짜시간 ──
+  ctx.textAlign='right';
+  ctx.fillText(fmtNow(),w-pad,pad);
+
+  // 그림자 초기화
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;
+  ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+}
+
+// ===== 탭 =====
+function goTab(id){
+  document.querySelectorAll('.pane').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e=>e.classList.remove('on'));
+  document.getElementById('t-'+id).classList.add('active');
+  document.getElementById('nb-'+id).classList.add('on');
+  if(id!=='cam'&&camStarted){camStarted=false;if(camWatchdog)clearInterval(camWatchdog);stopCamTracks();} // 카메라 탭 벗어나면 정지(배터리)+재시작 꼬임 방지
+  if(id==='cam'&&camEverStarted&&!camStarted)startCamera().catch(()=>{}); // 한 번 시작된 적 있으면 복귀 시 자동 재시작 — 정지 뒤 마지막 프레임만 남는 증상 수정(0917)
+  if(id==='gal')renderGallery();
+  if(id==='map'){initMap();[150,400,800].forEach(ms=>setTimeout(()=>map&&map.invalidateSize(),ms));}
+}
+
+// ===== 프로젝트 선택 =====
+function selectProject(proj){
+  selectedProject=proj;closeProjPanel();
+  document.getElementById('chip-dot').style.background=proj?proj.color:'var(--dim)';
+  document.getElementById('chip-label').textContent=proj?proj.name+' ▾':'프로젝트 선택 ▾';
+  updateHUD();
+}
+
+function openProjPanel(){document.getElementById('proj-panel').classList.add('open');renderProjSelectList();}
+function closeProjPanel(){document.getElementById('proj-panel').classList.remove('open');}
+
+async function renderProjSelectList(){
+  await loadProjects();await loadAllPhotos();
+  const el=document.getElementById('proj-select-list');
+  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
+  el.innerHTML='';
+  projects.forEach(p=>{
+    const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
+    const div=document.createElement('div');div.className='proj-item';
+    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장 &nbsp;|&nbsp; 📁 내부저장소/현장캠/${p.name}/</div></div>
+      <button class="proj-del-btn" onclick="event.stopPropagation();doDeleteProject('${p.name}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg>
+      </button>
+      <div class="proj-item-check">${selectedProject?.name===p.name?'✓':''}</div>`;
+    div.onclick=()=>selectProject(p);el.appendChild(div);
+  });
+}
+
+async function doDeleteProject(name){
+  if(!confirm(name+'\n\n이 프로젝트 폴더를 삭제할까요?\n(사진·레이어 파일 모두 삭제됩니다)'))return;
+  const proj=projects.find(p=>p.name===name);
+  if(proj)await deleteProjectData(proj);
+  await loadAllPhotos();
+  if(selectedProject?.name===name)selectProject(null);
+  if(galFilter===name)galFilter=null;
+  renderProjSelectList();
+  renderGalFilter();
+  if(map)refreshMarkers();
+  toast('프로젝트 삭제됨');
+}
+
+function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
+function closeNewProjModal(){document.getElementById('new-proj-modal').classList.remove('show');}
+
+async function confirmNewProj(){
+  const name=document.getElementById('new-proj-inp').value.trim();
+  if(!name){toast('이름을 입력해주세요');return;}
+  const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+  const proj=await createProjectData(name,color);
+  closeNewProjModal();
+  document.getElementById('new-proj-inp').value='';
+  selectProject({name,color,...proj});
+  toast('✅ '+name+' 추가됨');
+}
+
+// ===== 갤러리 =====
+let galFilter=null;    // null=전체, 그 외=프로젝트명 (사진 목록 프로젝트별 보기)
+let galFilterNames=[]; // 칩 인덱스 → 이름 매핑 (프로젝트명에 특수문자가 있어도 안전)
+function renderGalFilter(){
+  const el=document.getElementById('gal-filter');if(!el)return;
+  const names=[...new Set(allPhotos.map(p=>p.projectName||'미분류'))];
+  const order=projects.map(p=>p.name);
+  names.sort((a,b)=>{const ai=order.indexOf(a),bi=order.indexOf(b);return (ai<0?999:ai)-(bi<0?999:bi);});
+  galFilterNames=['__all__',...names];
+  let html=`<button class="gal-chip ${galFilter===null?'on':''}" onclick="setGalFilter(0)">전체</button>`;
+  html+=names.map((n,i)=>{
+    const c=projects.find(p=>p.name===n)?.color||'#888';
+    return `<button class="gal-chip ${galFilter===n?'on':''}" onclick="setGalFilter(${i+1})"><span class="gal-chip-dot" style="background:${c}"></span>${n.replace(/'/g,'&#39;')}</button>`;
+  }).join('');
+  el.innerHTML=html;
+}
+function setGalFilter(i){
+  const v=galFilterNames[i];
+  if(v===undefined)return;
+  galFilter=(v==='__all__')?null:v;
+  renderGallery();
+}
+async function renderGallery(){
+  await loadProjects();await loadAllPhotos();
+  renderGalFilter();
+  const shown=galFilter?allPhotos.filter(p=>(p.projectName||'미분류')===galFilter):allPhotos;
+  const list=document.getElementById('gal-list');
+  document.getElementById('gal-cnt').textContent=galFilter?`${shown.length}/${allPhotos.length}장`:allPhotos.length+'장';
+  if(!shown.length){
+    list.innerHTML=`<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p>${galFilter?'이 프로젝트의 사진이 없어요':'아직 사진이 없어요'}</p><small>${galFilter?'위 칩으로 다른 프로젝트를 선택해주세요':'카메라 탭에서 촬영해보세요'}</small></div>`;
+    return;
+  }
+  list.innerHTML='';
+  shown.forEach(p=>{
+    const url=getPhotoURL(p);
+    const t=fmtDt(p.time);
+    const div=document.createElement('div');div.className='photo-item';
+    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\n${t}`;
+    div.innerHTML=`<img class="thumb" src="${url}">
+      <div class="pmeta">
+        <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
+        ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
+        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\n고도 '+Math.round(p.alt)+'m':''}</div>
+        <div class="ptime">${t}</div>
+      </div>
+      <div class="pacts"><button class="ibtn del" onclick="doDelPhoto(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+        </svg></button></div>`;
+    div.querySelector('.thumb').onclick=()=>openLightbox(url,meta);
+    div.querySelector('.ibtn.del').dataset.idx=allPhotos.indexOf(p);
+    list.appendChild(div);
+  });
+}
+async function doDelPhoto(btn){
+  const idx=parseInt(btn.dataset.idx);
+  const p=allPhotos[idx];if(!p)return;
+  await deletePhotoData(p);await loadAllPhotos();renderGallery();toast('삭제됨');
+}
+
+// ===== 지도 =====
+let map,baseTileLayer;
+let myLocMarker=null, myLocCircle=null; // 내 위치 표시
+let photoLayerGroups={},photoLayerVisible={},leafletLayers={};
+// 사진 on/off 상태 복원 (메모리에만 있어 앱 재시작마다 전부 다시 켜지던 문제 수정)
+try{Object.assign(photoLayerVisible,JSON.parse(localStorage.getItem('photoLayerVisible')||'{}'));}catch(e){}
+
+function initMap(){
+  try{
+    if(map){refreshMarkers();renderSettingsLayerList();return;}
+    if(typeof L === 'undefined'){toast('지도 라이브러리 로드 중... 잠시 후 다시 탭해주세요');return;}
+    // preferCanvas: 수만 개 폴리곤/라인(지적도·관로망)도 SVG DOM 대신 canvas로 그려 WebView 멈춤 방지
+    map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([36.5,127.8],7);
+  const savedType=localStorage.getItem('map_type')||'vworld';
+  const savedKey=localStorage.getItem('vworld_key')||'';
+  baseTileLayer=makeTileLayer(savedType,savedKey);
+  baseTileLayer.addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  map.on('click',onMapClick);
+  if(navigator.geolocation)
+    navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],15),()=>{});
+  refreshMarkers();
+  loadLayersToMap();
+  }catch(e){console.error('initMap error:',e);toast('지도 초기화 실패: '+e.message);}
+}
+
+function makeTileLayer(type,key){
+  const cfgs={
+    'vworld':{url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',opt:{attribution:'© VWorld',maxZoom:19,crossOrigin:''}},
+    'esri-sat':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI',maxZoom:19,maxNativeZoom:18,crossOrigin:''}},
+    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:'© VWorld 위성',maxZoom:19,crossOrigin:''}},
+    'osm':{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opt:{attribution:'© OpenStreetMap',maxZoom:19,crossOrigin:''}},
+    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,opt:{attribution:'© VWorld 지적도',maxZoom:19,crossOrigin:''}}
+  };
+  const cfg=cfgs[type]||cfgs['vworld'];
+  return L.tileLayer(cfg.url,cfg.opt);
+}
+
+function setMapType(type){
+  if(!map){toast('지도 탭을 먼저 열어주세요');return;}
+  const key=localStorage.getItem('vworld_key')||'';
+  if(type==='vworld-gray'&&!key){toast('지적도는 VWorld API 키가 필요해요');return;}
+  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('mtype-'+type);if(btn)btn.classList.add('on');
+  localStorage.setItem('map_type',type);
+  if(baseTileLayer)map.removeLayer(baseTileLayer);
+  baseTileLayer=makeTileLayer(type,key);
+  baseTileLayer.addTo(map);baseTileLayer.bringToBack();
+  closeSettings();
+}
+
+async function refreshMarkers(){
+  if(!map)return;
+  await loadProjects();await loadAllPhotos();
+  Object.values(photoLayerGroups).forEach(lg=>map.removeLayer(lg));
+  photoLayerGroups={};
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
+  if(!gpsPhotos.length)return;
+  const groups={},bounds=[];
+  gpsPhotos.forEach(p=>{
+    const key=p.projectName||'none';
+    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    groups[key].photos.push(p);
+  });
+  Object.entries(groups).forEach(([key,g])=>{
+    if(photoLayerVisible[key]===undefined)photoLayerVisible[key]=true;
+    const lg=L.layerGroup();
+    g.photos.forEach(p=>{
+      const url=getPhotoURL(p);
+      const icon=L.divIcon({className:'',
+        html:`<div style="width:34px;height:34px;background:${g.color};border:2.5px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
+        iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-38]});
+      const mk=L.marker([p.lat,p.lon],{icon})
+        .bindPopup(`<img class="popup-img" src="${url}">
+          <div class="popup-title">${escHtml(p.projectName||'(프로젝트 없음)')}</div>
+          ${p.description?`<div class="popup-desc">▸ ${kmlEsc(p.description)}</div>`:''}
+          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}</div>`,
+          {maxWidth:220}).addTo(lg);
+      mk.on('popupopen',e=>{const pe=e.popup.getElement();const im=pe&&pe.querySelector('.popup-img');if(im)im.onclick=()=>openLightbox(url,p.projectName||'');});
+      bounds.push([p.lat,p.lon]);
+    });
+    photoLayerGroups[key]=lg;
+    if(photoLayerVisible[key])lg.addTo(map);
+  });
+  if(bounds.length)map.fitBounds(bounds,{padding:[50,50]});
+  if(document.getElementById('settings-panel').classList.contains('open'))renderSettingsLayerList();
+}
+
+function savePhotoLayerVisible(){
+  try{localStorage.setItem('photoLayerVisible',JSON.stringify(photoLayerVisible));}catch(e){}
+}
+function togglePhotoLayer(key){
+  photoLayerVisible[key]=!photoLayerVisible[key];
+  savePhotoLayerVisible();
+  const lg=photoLayerGroups[key];
+  if(lg){photoLayerVisible[key]?lg.addTo(map):map.removeLayer(lg);}
+  renderSettingsLayerList();
+}
+function toggleAllPhotoLayers(visible){
+  Object.keys(photoLayerGroups).forEach(key=>{
+    photoLayerVisible[key]=visible;
+    const lg=photoLayerGroups[key];
+    if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
+  });
+  savePhotoLayerVisible();
+  renderSettingsLayerList();
+}
+
+function locateMe(){navigator.geolocation.getCurrentPosition(p=>{if(map)map.setView([p.coords.latitude,p.coords.longitude],16);});}
+
+// 내 위치 파란 점 업데이트
+function updateMyLocation(coords){
+  if(!map)return;
+  const latlng=[coords.latitude,coords.longitude];
+
+  const icon=L.divIcon({
+    className:'',
+    html:`<div style="
+      width:18px;height:18px;
+      background:#2196F3;
+      border:3px solid #fff;
+      border-radius:50%;
+      box-shadow:0 0 0 4px rgba(33,150,243,0.25),0 2px 8px rgba(0,0,0,0.3);
+      animation:pulse 2s infinite;
+    "></div>`,
+    iconSize:[18,18],iconAnchor:[9,9]
+  });
+
+  if(!myLocMarker){
+    myLocMarker=L.marker(latlng,{icon,zIndexOffset:1000}).addTo(map);
+  }else{
+    myLocMarker.setLatLng(latlng).setIcon(icon);
+  }
+}
+
+async function onMapClick(e){
+  const {lat,lng}=e.latlng;const ls=lat.toFixed(6),lo=lng.toFixed(6);
+  const popup=L.popup({maxWidth:260}).setLatLng(e.latlng)
+    .setContent(`<div><div class="coord-title">좌표</div>
+      <div class="coord-val">${ls}, ${lo}</div>
+      <div class="coord-title">주소</div>
+      <div class="addr-val" id="paddr">🔍 검색 중...</div>
+      <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button></div>
+    </div>`).openOn(map);
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
+    const d=await r.json();const addr=d.display_name||'주소 없음';
+    const el=document.getElementById('paddr');
+    if(el){el.textContent=addr;
+      const row=el.nextElementSibling;
+      if(row)row.innerHTML=`<button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button><button class="copy-btn sec" onclick="copyText(\`${addr.replace(/`/g,"'")}\`)">주소 복사</button>`;
+    }
+  }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent='주소 검색 실패';}
+}
+function copyText(t){
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('📋 복사됨!'));
+  else{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('📋 복사됨!');}
+}
+
+// ===== 레이어 =====
+async function loadLayersToMap(){
+  await loadAllLayers();
+  // 역순 추가: allLayers[0](목록 맨 위)이 지도 최상위가 되도록
+  [...allLayers].reverse().forEach(l=>addLeafletLayer(l));
+}
+
+function addLeafletLayer(l){
+  if(!map)return;
+  const key=l.geojsonPath||l.id;
+  if(leafletLayers[key])map.removeLayer(leafletLayers[key]);
+  let geojson=l.geojson;
+  if(!geojson&&IS_APK&&l.geojsonPath){
+    try{geojson=JSON.parse(AndroidBridge.readText(l.geojsonPath));}catch(e){}
+  }
+  if(!geojson)return;
+  const sym=l.symbol||'circle';
+  const lf=L.geoJSON(geojson,{
+    style:{color:l.color,weight:2.5,fillOpacity:.15},
+    pointToLayer:(f,ll)=>{
+      const icon=L.divIcon({className:'',
+        html:makeSymbolHtml(l.color,sym,28),
+        iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-16]});
+      return L.marker(ll,{icon});
+    },
+    onEachFeature:(f,lf2)=>{
+      const p=f.properties||{};
+      lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.projectName||l.project||''}</div>`);
+    }
+  });
+  leafletLayers[key]=lf;
+  if(l.visible)lf.addTo(map);
+}
+
+// ===== 스캔 블랙리스트 (삭제한 레이어 재등록 방지) =====
+// 비교 전 trim + NFC 정규화: 공백/유니코드 형식(NFD) 차이로 같은 이름이 다르게 보이는 문제 방지
+function blNorm(s){return String(s||'').trim().normalize('NFC');}
+function addScanBlacklist(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  const pj=blNorm(projName);
+  const nm=blNorm(layerName);
+  if(!bl[pj])bl[pj]=[];
+  if(!bl[pj].some(n=>blNorm(n)===nm))bl[pj].push(nm);
+  localStorage.setItem('scanBL',JSON.stringify(bl));
+}
+function isScanBlacklisted(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  const nm=blNorm(layerName);
+  return (bl[blNorm(projName)]||[]).some(n=>blNorm(n)===nm);
+}
+function removeScanBlacklist(projName,layerName){
+  const bl=JSON.parse(localStorage.getItem('scanBL')||'{}');
+  const pj=blNorm(projName);
+  const nm=blNorm(layerName);
+  if(bl[pj]){
+    bl[pj]=bl[pj].filter(n=>blNorm(n)!==nm);
+    if(!bl[pj].length)delete bl[pj];
+  }
+  localStorage.setItem('scanBL',JSON.stringify(bl));
+}
+
+async function toggleLayer(idx){
+  const l=allLayers[idx];if(!l)return;
+  const newVis=await toggleLayerData(l);
+  const key=l.geojsonPath||l.id;
+  const lf=leafletLayers[key];
+  if(lf){newVis?lf.addTo(map):map.removeLayer(lf);}
+  reapplyLayerOrder(); // 다시 켠 레이어가 최상위로 점프하는 것 방지 (목록 순서 유지)
+  renderSettingsLayerList();
+}
+
+async function deleteLayer(idx){
+  const l=allLayers[idx];if(!l)return;
+  if(!confirm(l.name+'\n\n이 레이어를 삭제할까요?\n복구가 필요하면 설정 → 삭제한 파일 목록에서 할 수 있어요'))return;
+  const key=l.geojsonPath||l.id;
+  if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
+  // 스캔 블랙리스트에 등록 (폴더 재스캔 시 부활 방지)
+  // srcFile: 이 레이어를 만든 원본 파일(.kmz/.kml/.shp 기본이름) → 원본 단위로 차단
+  addScanBlacklist(l.projectName||l.project||'미분류', l.srcFile||l.name);
+  await deleteLayerData(l);
+  renderSettingsLayerList();toast('레이어 삭제됨 (재스캔 시 제외됨)');
+}
+
+// 레이어 색상 변경
+async function setLayerColor(idx,color){
+  const l=allLayers[idx];if(!l)return;
+  l.color=color;
+  if(IS_APK&&l.geojsonPath)
+    AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
+  else if(!IS_APK) await dbPut('layers',{...l,color});
+  // 지도 레이어 다시 그리기
+  addLeafletLayer(l);
+  renderSettingsLayerList();
+}
+
+// 레이어 심볼 변경
+async function setLayerSymbol(idx,symbol){
+  const l=allLayers[idx];if(!l)return;
+  l.symbol=symbol;
+  if(IS_APK&&l.geojsonPath)
+    AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
+  else if(!IS_APK) await dbPut('layers',{...l,symbol});
+  addLeafletLayer(l);
+  renderSettingsLayerList();
+}
+
+// 레이어 지도 확대
+function zoomToLayer(idx){
+  const l=allLayers[idx];if(!l||!map)return;
+  const key=l.geojsonPath||l.id;
+  const lf=leafletLayers[key];
+  if(!lf)return;
+  try{
+    const b=lf.getBounds();
+    if(b.isValid())map.fitBounds(b,{padding:[40,40]});
+    closeSettings();
+  }catch(e){}
+}
+
+// ===== 설정 패널 =====
+async function openSettings(){
+  document.getElementById('settings-overlay').classList.add('show');
+  document.getElementById('settings-panel').classList.add('open');
+  if(IS_APK){
+    const p=AndroidBridge.getBasePath();
+    basePath=p;
+    document.getElementById('base-path-display').textContent=p;
+  }
+  const key=localStorage.getItem('vworld_key')||'';
+  if(key){
+    document.getElementById('vworld-key-inp').value=key;
+    document.getElementById('vworld-key-status').textContent='✅ API 키 저장됨';
+    document.getElementById('vworld-key-status').style.color='var(--gps)';
+  }
+  const cur=localStorage.getItem('map_type')||'vworld';
+  document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
+  const curBtn=document.getElementById('mtype-'+cur);if(curBtn)curBtn.classList.add('on');
+  await loadProjects();await loadAllPhotos();
+  // allLayers는 메모리 유지 (순서 보존) - 처음 로드할 때만 읽음
+  if(!allLayers.length) await loadAllLayers();
+
+  renderSettingsLayerList();
+  renderExportInSettings();
+}
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('show');
+  document.getElementById('settings-panel').classList.remove('open');
+}
+function saveVWorldKey(){
+  const key=document.getElementById('vworld-key-inp').value.trim();
+  if(!key){toast('API 키를 입력해주세요');return;}
+  localStorage.setItem('vworld_key',key);
+  document.getElementById('vworld-key-status').textContent='✅ 저장됨';
+  document.getElementById('vworld-key-status').style.color='var(--gps)';
+  toast('API 키 저장됨');
+}
+
+// ===== 설정 내 레이어 목록 =====
+function renderSettingsLayerList(){
+  const el=document.getElementById('settings-layer-list');if(!el)return;
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
+  let html='';
+
+  // 프로젝트 목록 수집 (사진 + 레이어 통합)
+  const projSet=new Set();
+  gpsPhotos.forEach(p=>projSet.add(p.projectName||'미분류'));
+  allLayers.forEach(l=>projSet.add(l.projectName||l.project||'미분류'));
+
+  // projects DB 순서대로 정렬
+  const projOrder=[...projects.map(p=>p.name),'미분류'];
+  const sortedProjs=[...projSet].sort((a,b)=>{
+    const ai=projOrder.indexOf(a),bi=projOrder.indexOf(b);
+    return (ai<0?999:ai)-(bi<0?999:bi);
+  });
+
+  sortedProjs.forEach(proj=>{
+    // 이 프로젝트의 사진
+    const projPhotos=gpsPhotos.filter(p=>(p.projectName||'미분류')===proj);
+    const photoKey=proj==='미분류'?'none':proj;
+    const photoOn=photoLayerVisible[photoKey]!==false;
+
+    // 이 프로젝트의 레이어
+    const projLayers=allLayers.map((l,idx)=>({l,idx}))
+      .filter(({l})=>(l.projectName||l.project||'미분류')===proj);
+
+    if(!projPhotos.length&&!projLayers.length)return;
+
+    // 프로젝트 전체 상태
+    const allOn=(projPhotos.length===0||photoOn)&&projLayers.every(({l})=>l.visible);
+    const projColor=projects.find(p=>p.name===proj)?.color||'#888';
+
+    html+=`<div class="layer-proj-hdr">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="layer-color" style="background:${projColor};width:10px;height:10px;border-radius:2px"></div>
+        <span class="layer-proj-name">${proj}</span>
+      </div>
+      <button class="layer-proj-toggle" onclick="toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+    </div>`;
+
+    // 사진 행
+    if(projPhotos.length>0){
+      html+=`<div class="layer-item" style="padding-left:8px">
+        <div style="font-size:16px;flex-shrink:0">📸</div>
+        <div class="layer-info"><div class="layer-name">사진</div><div class="layer-sub">${projPhotos.length}장</div></div>
+        <button class="toggle-btn ${photoOn?'on':'off'}" onclick="togglePhotoLayer('${photoKey}')"></button>
+      </div>`;
+    }
+
+    // 레이어 행 (개별)
+    projLayers.forEach(({l,idx})=>{
+      const eKey='lx'+idx;
+      const isExp=expandedLayers.has(eKey);
+      const sym=l.symbol||'circle';
+      html+=`<div class="layer-item" style="padding-left:4px;cursor:pointer" data-lyr="${idx}"
+        onclick="toggleLayerExpand('${eKey}')"
+        ondragover="event.preventDefault();layerDragOver(event,${idx})"
+        ondrop="event.preventDefault();event.stopPropagation();layerDrop(${idx})">
+        <div class="drag-handle"
+          draggable="true"
+          ondragstart="event.stopPropagation();layerDragStart(event,${idx})"
+          ondragend="event.stopPropagation();layerDragEnd(event)"
+          onclick="event.stopPropagation()"
+          ontouchstart="layerTouchStart(event,${idx})"
+          ontouchmove="layerTouchMove(event)"
+          ontouchend="layerTouchEnd(event)"
+          ontouchcancel="layerTouchCancel(event)"
+          title="길게 눌러 이동">⠿</div>
+        <div style="flex-shrink:0">${makeSymbolHtml(l.color,sym,20)}</div>
+        <div class="layer-info"><div class="layer-name">${l.name}</div></div>
+        <button class="mfab" style="width:28px;height:28px;border-radius:7px;font-size:13px" onclick="event.stopPropagation();zoomToLayer(${idx})">🔍</button>
+        <button class="toggle-btn ${l.visible?'on':'off'}" onclick="event.stopPropagation();toggleLayer(${idx})"></button>
+        <button class="del-btn" onclick="event.stopPropagation();deleteLayer(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>
+      <div class="layer-expand ${isExp?'show':''}" id="${eKey}">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="mv-btn" onclick="event.stopPropagation();moveLayer(${idx},-1)">▲ 위로</button>
+          <button class="mv-btn" onclick="event.stopPropagation();moveLayer(${idx},1)">▼ 아래로</button>
+        </div>
+        <div class="expand-label">색상</div>
+        <div class="color-grid">${COLOR_PALETTE.map(c=>`<div class="color-chip ${l.color===c?'on':''}" style="background:${c}" onclick="setLayerColor(${idx},'${c}')"></div>`).join('')}</div>
+        <div class="expand-label" style="margin-top:8px">아이콘</div>
+        <div class="symbol-grid">${Object.entries(SYMBOL_LABELS).map(([s,lb])=>`<button class="symbol-btn ${sym===s?'on':''}" onclick="setLayerSymbol(${idx},'${s}')" title="${s}">${makeSymbolHtml(l.color,s,18)}</button>`).join('')}</div>
+      </div>`;
+    });
+  });
+
+  if(!gpsPhotos.length&&!allLayers.length)
+    html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
+  el.innerHTML=html;
+  updateBlCount();
+}
+
+function toggleLayerExpand(eKey){
+  if(expandedLayers.has(eKey))expandedLayers.delete(eKey);
+  else expandedLayers.add(eKey);
+  renderSettingsLayerList();
+}
+
+// ===== 레이어 드래그로 순서 변경 =====
+let dragSrcIdx=null;
+
+function layerDragStart(e,idx){
+  dragSrcIdx=idx;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',String(idx));
+  setTimeout(()=>{
+    const items=document.querySelectorAll('#settings-layer-list .layer-item');
+    if(items[idx])items[idx].classList.add('dragging');
+  },0);
+}
+
+function layerDragOver(e,idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  // 드래그 위치 표시
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach((el,i)=>{
+    el.classList.toggle('drag-over',i===idx&&idx!==dragSrcIdx);
+  });
+}
+
+async function layerDrop(idx){
+  if(dragSrcIdx===null||dragSrcIdx===idx){layerDragEnd();return;}
+  const moved=allLayers.splice(dragSrcIdx,1)[0];
+  const insertAt=idx>dragSrcIdx?idx-1:idx;
+  allLayers.splice(insertAt,0,moved);
+  allLayers.forEach((l,i)=>l.order=i);
+  saveLayerOrder();
+  // DB 업데이트
+  if(!IS_APK)for(const l of allLayers)if(l.id)await dbPut('layers',{...l});
+  persistAllLayerMeta();
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+  dragSrcIdx=null;
+}
+
+function layerDragEnd(e){
+  dragSrcIdx=null;
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>{
+    el.classList.remove('dragging','drag-over');
+  });
+}
+
+// ===== 터치 드래그 (모바일) =====
+// HTML5 드래그(draggable)는 안드로이드 WebView 터치에서 동작하지 않아
+// 길게 누르기(long-press) → 손가락 이동 → 놓기로 직접 구현
+let touchDrag=null; // {idx, timer, startX, startY, active, ghost, rowEl}
+const TOUCH_DRAG_DELAY=350; // ms 길게 누르기 판정
+
+function layerTouchStart(e,idx){
+  if(touchDrag)return;
+  const t=e.changedTouches[0];
+  touchDrag={idx,timer:null,startX:t.clientX,startY:t.clientY,curX:t.clientX,curY:t.clientY,active:false,rowEl:e.currentTarget};
+  touchDrag.timer=setTimeout(startTouchDrag,TOUCH_DRAG_DELAY);
+}
+
+function startTouchDrag(){
+  if(!touchDrag||touchDrag.active)return;
+  touchDrag.active=true;
+  const row=touchDrag.rowEl;
+  const l=allLayers[touchDrag.idx];
+  if(navigator.vibrate)try{navigator.vibrate(15);}catch(v){}
+  // 원래 행 반투명 처리
+  if(row)row.classList.add('dragging');
+  // 고스트(손가락 따라다니는 미리보기) 생성
+  const ghost=document.getElementById('layer-drag-ghost');
+  if(ghost){
+    ghost.textContent='⠿ '+(l?l.name:'');
+    ghost.style.display='block';
+    ghost.style.left=(touchDrag.curX+12)+'px';
+    ghost.style.top=(touchDrag.curY-34)+'px';
+    touchDrag.ghost=ghost;
+  }
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>{
+    if(el!==row)el.classList.remove('drag-over');
+  });
+}
+
+function layerTouchMove(e){
+  if(!touchDrag)return;
+  const t=e.changedTouches[0];
+  touchDrag.curX=t.clientX;touchDrag.curY=t.clientY;
+  if(!touchDrag.active){
+    // 길게 누르기 전 살짝 움직이면 취소 (스크롤과 구분)
+    const dx=Math.abs(t.clientX-touchDrag.startX);
+    const dy=Math.abs(t.clientY-touchDrag.startY);
+    if(dx>10||dy>10){
+      if(touchDrag.timer){clearTimeout(touchDrag.timer);touchDrag.timer=null;}
+      touchDrag=null;
+      return;
+    }
+    e.preventDefault(); // 보류 중 스크롤 방지
+    return;
+  }
+  e.preventDefault(); // 스크롤 방지 (드래그 중)
+  // 고스트 이동
+  if(touchDrag.ghost){
+    touchDrag.ghost.style.left=(t.clientX+12)+'px';
+    touchDrag.ghost.style.top=(t.clientY-34)+'px';
+  }
+  // 어떤 행 위인지 표시 + 가장자리에서 패널 자동스크롤
+  const rows=[...document.querySelectorAll('#settings-layer-list .layer-item[data-lyr]')];
+  let hit=null;
+  for(const el of rows){
+    const r=el.getBoundingClientRect();
+    if(t.clientY>=r.top&&t.clientY<=r.bottom){hit=el;break;}
+  }
+  rows.forEach(el=>el.classList.toggle('drag-over',el===hit&&el!==touchDrag.rowEl));
+  // 패널 자동스크롤 (드래그 중 화면 가장자리 근처에서)
+  const scroller=touchDrag.rowEl?touchDrag.rowEl.closest('.settings-panel'):null;
+  const sc=scroller?scroller.querySelector('div[style*="overflow-y"]'):null;
+  if(sc){
+    const sr=sc.getBoundingClientRect();
+    if(t.clientY<sr.top+44)sc.scrollTop-=10;
+    else if(t.clientY>sr.bottom-44)sc.scrollTop+=10;
+  }
+}
+
+async function layerTouchEnd(e){
+  if(!touchDrag)return;
+  const td=touchDrag;touchDrag=null;
+  if(td.timer){clearTimeout(td.timer);td.timer=null;}
+  if(td.ghost)td.ghost.style.display='none';
+  if(td.active)e.preventDefault(); // 드래그 판정 후 브라우저 합성 click 방지 (펼침 토글 오작동 방지)
+  const rows=[...document.querySelectorAll('#settings-layer-list .layer-item[data-lyr]')];
+  let hit=null;
+  if(td.active){
+    const t=e.changedTouches[0];
+    for(const el of rows){
+      const r=el.getBoundingClientRect();
+      if(t.clientY>=r.top&&t.clientY<=r.bottom){hit=el;break;}
+    }
+  }
+  rows.forEach(el=>el.classList.remove('dragging','drag-over'));
+  if(!td.active||!hit||hit===td.rowEl)return; // 그냥 탭이거나 제자리
+  const targetIdx=parseInt(hit.dataset.lyr,10);
+  if(isNaN(targetIdx)||targetIdx===td.idx)return;
+  // 순서 변경 (마우스 드롭과 동일한 로직)
+  const moved=allLayers.splice(td.idx,1)[0];
+  const insertAt=targetIdx>td.idx?targetIdx-1:targetIdx;
+  allLayers.splice(insertAt,0,moved);
+  allLayers.forEach((l,i)=>l.order=i);
+  saveLayerOrder();
+  if(!IS_APK){for(const l of allLayers)if(l.id)await dbPut('layers',{...l});}
+  persistAllLayerMeta();
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+  toast('↕ 레이어 순서 변경됨');
+}
+
+// 모든 레이어 메타를 저장소에 반영 (APK: meta.json / 웹: IndexedDB)
+function persistAllLayerMeta(){
+  if(IS_APK){
+    for(const l of allLayers){
+      if(!l.geojsonPath)continue;
+      AndroidBridge.updateLayerMeta(l.geojsonPath,
+        JSON.stringify({color:l.color,visible:l.visible,project:l.projectName||l.project||'',
+          symbol:l.symbol||'circle',order:l.order||0,srcFile:l.srcFile||''}));
+    }
+  }
+  // 웹(IndexedDB)은 비동기라 호출부에서 dbPut 처리 (layerDrop/layerTouchEnd 참조)
+}
+
+// 터치 취소 (브라우저가 스크롤 등으로 제어권을 가져간 경우) - 이동 없이 정리만
+function layerTouchCancel(){
+  if(!touchDrag)return;
+  const td=touchDrag;touchDrag=null;
+  if(td.timer){clearTimeout(td.timer);td.timer=null;}
+  if(td.ghost)td.ghost.style.display='none';
+  if(td.rowEl)td.rowEl.classList.remove('dragging');
+  document.querySelectorAll('#settings-layer-list .layer-item').forEach(el=>el.classList.remove('drag-over'));
+}
+
+// 프로젝트 사진 + 레이어 전체 토글
+async function toggleProjectAll(projEncoded,visible){
+  const proj=decodeURIComponent(projEncoded);
+  const photoKey=proj==='미분류'?'none':proj;
+  // 사진 토글
+  photoLayerVisible[photoKey]=visible;
+  savePhotoLayerVisible();
+  const lg=photoLayerGroups[photoKey];
+  if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
+  // 레이어 토글
+  await toggleProjectLayers(projEncoded,visible);
+}
+
+// ===== 레이어 순서 이동 (확장 패널 ▲▼ 버튼) =====
+async function moveLayer(idx,dir){
+  if(idx<0||idx>=allLayers.length)return;
+  const projOf=l=>l.projectName||l.project||'미분류';
+  const proj=projOf(allLayers[idx]);
+  // 같은 프로젝트의 이웃 레이어를 찾아 스왑 (목록에 보이는 순서와 일치)
+  let j=idx+dir;
+  while(j>=0&&j<allLayers.length&&projOf(allLayers[j])!==proj)j+=dir;
+  if(j<0||j>=allLayers.length)return;
+  const tmp=allLayers[idx];
+  allLayers[idx]=allLayers[j];
+  allLayers[j]=tmp;
+  allLayers[idx].order=idx;
+  allLayers[j].order=j;
+  if(IS_APK){
+    const la=allLayers[idx],lb=allLayers[j];
+    if(la.geojsonPath)AndroidBridge.updateLayerMeta(la.geojsonPath,buildLayerMeta(la));
+    if(lb.geojsonPath)AndroidBridge.updateLayerMeta(lb.geojsonPath,buildLayerMeta(lb));
+  }else{
+    await dbPut('layers',{...allLayers[idx],order:idx});
+    await dbPut('layers',{...allLayers[j],order:j});
+  }
+  saveLayerOrder(); // localStorage에 순서 저장
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+}
+
+// 레이어를 allLayers 순서대로 지도에 재적용
+function reapplyLayerOrder(){
+  if(!map)return;
+  // 기존 레이어 전부 제거
+  Object.values(leafletLayers).forEach(lf=>{if(map.hasLayer(lf))map.removeLayer(lf);});
+  // 역순으로 재추가: allLayers[0](목록 맨 위)이 지도에서도 가장 위에 오도록
+  // (나중에 addTo할수록 위에 쌓이므로 배열 끝부터 추가)
+  [...allLayers].reverse().forEach(l=>{
+    const key=l.geojsonPath||l.id;
+    const lf=leafletLayers[key];
+    if(lf&&l.visible)lf.addTo(map);
+  });
+  // 사진 마커는 항상 레이어 위 (마지막에 재추가)
+  Object.entries(photoLayerGroups).forEach(([key,lg])=>{
+    if(photoLayerVisible[key]!==false)lg.addTo(map);
+  });
+}
+
+// 프로젝트 전체 레이어 켜기/끄기
+async function toggleProjectLayers(projEncoded,visible){
+  const proj=decodeURIComponent(projEncoded);
+  for(const l of allLayers){
+    if((l.projectName||l.project||'미분류')!==proj)continue;
+    l.visible=visible;
+    if(IS_APK&&l.geojsonPath){
+      AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
+    }else if(!IS_APK){
+      await dbPut('layers',{...l,visible});
+    }
+    const key=l.geojsonPath||l.id;
+    const lf=leafletLayers[key];
+    if(lf){visible?lf.addTo(map):map.removeLayer(lf);}
+  }
+  reapplyLayerOrder(); // 스택 순서 복원
+  renderSettingsLayerList();
+}
+
+// ===== 파일 불러오기 =====
+// base64 → ArrayBuffer 변환
+// SHP 한국 좌표계 → WGS84 변환
+// 첫 좌표 재귀 추출: Polygon/MultiPolygon 등 몇 경 인지와 무관하게 가장 안쪽 [x,y] 숫자쌍 반환
+function shpFirstCoord(geojson){
+  for(const f of (geojson.features||[])){
+    let g=f.geometry;
+    if(g&&g.type==='GeometryCollection')g=(g.geometries||[])[0];
+    if(!g||!g.coordinates)continue;
+    let c=g.coordinates;
+    while(Array.isArray(c)&&typeof c[0]!=='number')c=c[0];
+    if(Array.isArray(c)&&typeof c[0]==='number'&&typeof c[1]==='number')return c;
+  }
+  return null;
+}
+// 투영 변환 후 좌표가 NaN이면 원본 유지 (proj4가 예외 대신 NaN을 반환하는 케이스 방어)
+function shpXformValid(p){return Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]);}
+// src 투영 → WGS84 전체 변환 (NaN 방어 + GeometryCollection 지원)
+function applyShpXform(geojson,src){
+  const wgs=proj4('EPSG:4326');
+  let okCnt=0,total=0;
+  const xc=c=>{
+    if(!Array.isArray(c[0])){
+      total++;
+      const p=proj4(src,wgs,[c[0],c[1]]);
+      if(!shpXformValid(p))return c;            // NaN 방어: 변환 실패 좌표는 원본 유지
+      okCnt++;return p;
+    }
+    return c.map(xc);
+  };
+  const xg=g=>{
+    if(!g)return g;
+    if(g.type==='GeometryCollection')return{...g,geometries:(g.geometries||[]).map(xg)};
+    return{...g,coordinates:xc(g.coordinates)};
+  };
+  return{features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)})),__ok:okCnt,__total:total};
+}
+// 좌표계 미지정 파일 안전망: 좌표가 한국 TM 미터 범위면 원점 후보 중 한국에 떨어지는 것으로 변환
+function ensureWgs84(geojson){
+  if(typeof proj4==='undefined'||!geojson?.features?.length)return geojson;
+  const fc=shpFirstCoord(geojson);
+  if(!fc)return geojson;
+  if(Math.abs(fc[0])<=180&&Math.abs(fc[1])<=90)return geojson;   // 이미 위경도
+  // 한국 TM 미터 대략 범위(동절 원점 x~130만, UTM-K y~230만 모두 포함) - 세부 판정은 후보별 한국 박스 검증이 담당
+  if(fc[0]<50000||fc[0]>2000000||fc[1]<50000||fc[1]>3000000)return geojson;
+  const cands=['EPSG:5186','EPSG:5179','EPSG:5187','EPSG:5185','EPSG:5188','EPSG:5181','EPSG:5174','EPSG:5173','EPSG:5176','EPSG:5177'];
+  for(const code of cands){
+    try{
+      const src=proj4(code);
+      const p=proj4(src,proj4('EPSG:4326'),[fc[0],fc[1]]);
+      if(Number.isFinite(p[0])&&p[0]>=123&&p[0]<=132&&p[1]>=32.5&&p[1]<=38.8){
+        const out=applyShpXform(geojson,src);
+        if(out.__ok>0){toast('ℹ️ 좌표계 미지정 파일 - '+code+' 추정 변환');return{...geojson,features:out.features};}
+      }
+    }catch(e){}
+  }
+  return geojson;
+}
+function fixShpCoords(geojson,prjBuf){
+  if(!prjBuf||typeof proj4==='undefined'||!geojson?.features?.length)return geojson;
+  try{
+    const prj=new TextDecoder().decode(prjBuf);
+    // 이미 WGS84면 패스
+    if(prj.includes('GCS_WGS_1984'))return geojson;
+    // 첫 좌표 확인 - 이미 위경도 범위면 패스 (배열 깊이 무관 재귀 탐색)
+    const fc=shpFirstCoord(geojson);
+    if(fc&&Math.abs(fc[0])<=180&&Math.abs(fc[1])<=90)return geojson;
+    // 투영 감지: proj4js는 WKT 직접 파싱 시 내부 파라미터(long0 등)를 노출하지 않으므로
+    // 유효성은 "첫 좌표를 직접 변환해 본 결과"로 판정한다 (예외/NaN/한국 박스 밖이면 실패 처리)
+    let src=null,srcName='WKT';
+    try{
+      const p=proj4(prj);
+      if(p&&fc){
+        const t=proj4(p,proj4('EPSG:4326'),[fc[0],fc[1]]);
+        if(Number.isFinite(t[0])&&Number.isFinite(t[1])&&t[0]>=118&&t[0]<=137&&t[1]>=30&&t[1]<=46)src=p;
+      }
+    }catch(e){}
+    if(!src){
+      // WKT 직접 사용 실패(깨진 WKT·원점 누락 등) → 중심자선 값으로 표준 EPSG 추정
+      const cm=(prj.match(/central_?meridian["',\s]+([\d.]+)/i)||[])[1];
+      const isGRS80=/Korea_2000|Korea 2000|GRS_1980|GRS 1980/i.test(prj);
+      const v=cm?parseFloat(cm):null;
+      if(v===null||!Number.isFinite(v)){
+        if(prj.includes('127.5')){src=proj4('EPSG:5179');srcName='5179';}
+        else{src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
+      }else if(Math.abs(v-127.5)<0.01){src=proj4('EPSG:5179');srcName='5179';}   // UTM-K 통합원점
+      else if(Math.abs(v-125)<0.01){src=proj4(isGRS80?'EPSG:5185':'EPSG:5173');srcName=isGRS80?'5185':'5173';}
+      else if(Math.abs(v-129)<0.01){src=proj4(isGRS80?'EPSG:5187':'EPSG:5176');srcName=isGRS80?'5187':'5176';}
+      else if(Math.abs(v-131)<0.01){src=proj4(isGRS80?'EPSG:5188':'EPSG:5177');srcName=isGRS80?'5188':'5177';}
+      else if(Math.abs(v-127)<0.02){src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
+      else{src=proj4(isGRS80?'EPSG:5186':'EPSG:5174');srcName=isGRS80?'5186':'5174';}
+    }
+    const wgs=proj4('EPSG:4326');
+    let okCnt=0,total=0;
+    const xc=c=>{
+      if(!Array.isArray(c[0])){
+        total++;
+        const p=proj4(src,wgs,[c[0],c[1]]);
+        if(!shpXformValid(p))return c;            // NaN 방어: 변환 실패 좌표는 원본 유지
+        okCnt++;return p;
+      }
+      return c.map(xc);
+    };
+    const xg=g=>{
+      if(!g)return g;
+      if(g.type==='GeometryCollection')return{...g,geometries:(g.geometries||[]).map(xg)};
+      return{...g,coordinates:xc(g.coordinates)};
+    };
+    const out={...geojson,features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)}))};
+    if(okCnt>0)toast('✅ 한국 좌표계 변환 완료 ('+okCnt+'/'+(total||okCnt)+'점)');
+    else console.warn('좌표변환: 유효 변환 없음 - 원본 유지');
+    return out;
+  }catch(e){console.error('좌표변환실패',e);return geojson;}
+}
+
+function b64ToArrayBuffer(b64){
+  const bin=atob(b64);
+  const buf=new ArrayBuffer(bin.length);
+  const view=new Uint8Array(buf);
+  for(let i=0;i<bin.length;i++)view[i]=bin.charCodeAt(i);
+  return buf;
+}
+
+// 수동 스캔 (버튼 눌렀을 때만)
+async function manualScanFolders(){
+  if(!IS_APK){toast('APK에서만 사용 가능해요');return;}
+  toast('폴더 스캔 중...');
+  await loadProjects();
+  let total=0;
+  const stats={bl:[],fail:[]};
+  for(const p of projects){
+    const added=await scanProjectLayers(p.name,stats);
+    total+=added;
+  }
+  await loadAllLayers();
+  // 새로 추가된 레이어를 지도에도 반영 (기존 것은 중복 방지)
+  allLayers.forEach(l=>{
+    const key=l.geojsonPath||l.id;
+    if(!leafletLayers[key])addLeafletLayer(l);
+  });
+  reapplyLayerOrder();
+  renderSettingsLayerList();
+  let msg=total>0?`✅ ${total}개 새 파일 읽었어요`:'새 파일 없음 (이미 읽었거나 파일 없음)';
+  if(stats.bl.length)msg+=`\n🚫 삭제이력 제외 ${stats.bl.length}개 — 설정 → 삭제한 파일 목록에서 복구 가능`;
+  if(stats.fail.length)msg+=`\n❌ 실패 ${stats.fail.length}개: ${stats.fail.slice(0,2).join(', ')}${stats.fail.length>2?' 외':''}`;
+  toast(msg);
+}
+
+// 자동 스캔 (내부용 - openSettings에서는 더 이상 호출 안 함)
+async function autoScanFolders(){
+  for(const p of projects){await scanProjectLayers(p.name);}
+}
+
+async function scanProjectLayers(projName,scanStats){
+  try{
+    const rawFiles=JSON.parse(AndroidBridge.listRawLayerFiles(projName));
+    const existingLayers=JSON.parse(AndroidBridge.listLayers(projName));
+    // 중복 판단: 레이어 이름 + 원본 파일명(srcFile) 둘 다 확인
+    const existingNames=new Set(existingLayers.map(l=>l.name));
+    const existingSrc=new Set(existingLayers.map(l=>l.srcFile).filter(Boolean));
+
+    // 파일을 기본이름으로 그룹핑 (대소문자 정규화: PIPE.SHP와 pipe.dbf도 한 세트로 묶임)
+    const groups={};
+    rawFiles.forEach(f=>{
+      const base=f.name.replace(/\.[^.]+$/,'').toLowerCase();
+      if(!groups[base])groups[base]={};
+      groups[base][f.ext.toLowerCase()]=f.path;
+    });
+
+    let added=0;
+    for(const [name,files] of Object.entries(groups)){
+      if(existingNames.has(name))continue; // 이미 처리됨 (같은 이름의 레이어 존재)
+      if(existingSrc.has(name))continue;   // 이 원본 파일에서 이미 레이어 생성됨
+      if(isScanBlacklisted(projName,name)){if(scanStats)scanStats.bl.push(name);continue;} // 사용자가 삭제한 원본 파일
+
+      let geojson;
+      try{
+        if(files.shp){
+          // SHP 처리
+          const shpBuf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.shp));
+          const obj={shp:shpBuf};
+          if(files.dbf)obj.dbf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.dbf));
+          if(files.prj)obj.prj=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj));
+          if(files.cpg){
+            try{const cpg=normalizeCpgLabel(AndroidBridge.readText(files.cpg));if(cpg)obj.cpg=cpg;}catch(e2){}
+          }
+          if(!files.prj)toast(`⚠️ ${name}: .prj 없음 - 좌표계 미지정 시 위치가 틀릴 수 있어요`);
+          geojson=await shp(obj);
+          // prj 있어도 shpjs가 WKT를 못 읽는 경우 대비 + prj 없으면 한국 TM 추정 변환 안전망
+          geojson=files.prj?fixShpCoords(geojson,files.prj?b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj)):null):ensureWgs84(geojson);
+        }else if(files.kmz){
+          // KMZ 처리 (멀티레이어)
+          const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.kmz));
+          const zip=await JSZip.loadAsync(buf);
+          const kf=zip.file('doc.kml')||Object.values(zip.files).find(x=>x.name.endsWith('.kml'));
+          if(kf){
+            const kmlDom=new DOMParser().parseFromString(await kf.async('string'),'text/xml');
+            const mls=kmlToMultiGeoJSON(kmlDom,name);
+            if(mls.length>1){
+              // 레이어별 중복/삭제이력 필터 (구버전 데이터: srcFile 없이 이름으로만 존재)
+              for(const ml of mls){
+                if(!ml.geojson.features.length)continue;
+                if(existingNames.has(ml.name)||existingSrc.has(name))continue;
+                if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
+                const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+                await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
+              continue;
+            }
+            geojson=mls[0]?.geojson;
+          }
+        }else if(files.kml){
+          // KML 처리 (멀티레이어)
+          const kmlDom=new DOMParser().parseFromString(AndroidBridge.readText(files.kml),'text/xml');
+          const mls=kmlToMultiGeoJSON(kmlDom,name);
+          if(mls.length>1){
+            // 레이어별 중복/삭제이력 필터 (구버전 데이터: srcFile 없이 이름으로만 존재)
+            for(const ml of mls){
+              if(!ml.geojson.features.length)continue;
+              if(existingNames.has(ml.name)||existingSrc.has(name))continue;
+              if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
+              const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+              await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
+            continue;
+          }
+          geojson=mls[0]?.geojson;
+        }else if(files.zip){
+          // ZIP(SHP 압축본) 처리 - 폴더 스캔 경로
+          const buf=b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.zip));
+          geojson=ensureWgs84(await shp(buf));
+        }else if(files.geojson||files.json){
+          // GeoJSON 처리
+          geojson=JSON.parse(AndroidBridge.readText(files.geojson||files.json));
+        }
+
+        if(geojson){
+          const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+          await saveLayerData(projName,name,geojson,color,true,'circle',name);
+          added++;
+          toast(`📂 ${name} 읽는 중...`);
+        }
+      }catch(e){console.error('파일 처리 실패:',name,e);if(scanStats)scanStats.fail.push(name+': '+(e&&e.message||'파싱 실패'));}
+    }
+    return added;
+  }catch(e){console.error('스캔 실패:',projName,e);return 0;}
+}
+// .cpg 인코딩 라벨 정규화 — 브라우저 TextDecoder는 'cp949' 라벨 미지원
+// ('euc-kr' 라벨이 인코딩 표준상 CP949 전체(한글 11,172자)를 해석함)
+function normalizeCpgLabel(raw){
+  const v=(raw||'').trim().toLowerCase();
+  if(!v||v==='utf-8')return '';
+  const KR=['cp949','ms949','949','windows-949','euc-kr','euckr','ksc5601',
+    'ks_c_5601-1987','ks_c_5601-1989','korean','cseuckr','csksc56011987','iso-ir-149'];
+  return KR.includes(v)?'euc-kr':v;
+}
+// 인코딩 자동판별: UTF-8로 디코딩해 깨짐문자(U+FFFD)가 나오면 CP949(EUC-KR)로 재판정.
+// "무조건 euc-kr 강제"는 UTF-8 최신 산출물(QGIS 등)을 오히려 깨뜨리므로 감지 기반으로 판단.
+function shpDecodeToUtf8(buf){
+  try{return new TextDecoder('utf-8',{fatal:false}).decode(buf);}catch(e){return '';}
+}
+function looksLikeCp949(buf){
+  try{
+    const dec=new TextDecoder('euc-kr',{fatal:false}).decode(buf);
+    return !dec.includes('\uFFFD');   // CP949로 깨끗하게 읽히면 CP949일 가능성 높음
+  }catch(e){return false;}
+}
+
+async function onFileSelected(e){
+  const files=[...e.target.files];if(!files.length)return;
+  e.target.value='';
+  const shpFile=files.find(f=>f.name.toLowerCase().endsWith('.shp'));
+  if(shpFile){
+    const dbfFile=files.find(f=>f.name.toLowerCase().endsWith('.dbf'));
+    const prjFile=files.find(f=>f.name.toLowerCase().endsWith('.prj'));
+    const cpgFile=files.find(f=>f.name.toLowerCase().endsWith('.cpg'));
+    const name=shpFile.name.replace(/\.shp$/i,'');
+    const shpBuf=await shpFile.arrayBuffer();
+    const dbfBuf=dbfFile?await dbfFile.arrayBuffer():null;
+    const prjBuf=prjFile?await prjFile.arrayBuffer():null;
+    let cpgLbl=cpgFile?normalizeCpgLabel(await cpgFile.text()):'';
+    // cpg 없고 DBF가 CP949로 판명되면 euc-kr 지정 (UTF-8이면 기본값 유지 - 자동판별)
+    if(!cpgLbl&&dbfBuf&&looksLikeCp949(dbfBuf)){
+      cpgLbl='euc-kr';
+      toast('한글 인코딩 CP949 감지');
+    }
+    // 파일명 기반 매칭: 여러 세트를 같이 골라도 관로.shp+관로.dbf가 서로 엮이지 않게 base명 비교
+    const shpBase=name.toLowerCase();
+    const findFor=ext=>files.find(f=>f.name.toLowerCase().endsWith(ext)&&
+      f.name.replace(/\.[^.]+$/i,'').toLowerCase()===shpBase);
+    const dbfM=findFor('.dbf')||dbfFile, prjM=findFor('.prj')||prjFile, cpgM=findFor('.cpg')||cpgFile;
+    const dbfBuf2=dbfM?await dbfM.arrayBuffer():dbfBuf;
+    const prjBuf2=prjM?await prjM.arrayBuffer():prjBuf;
+    let cpgLbl2=cpgM?(cpgM===cpgFile?cpgLbl:normalizeCpgLabel(await cpgM.text())):'';
+    if(!cpgLbl2&&dbfBuf2&&looksLikeCp949(dbfBuf2))cpgLbl2='euc-kr';
+    pendingFile={_shpMulti:true,name,shpBuf,dbfBuf:dbfBuf2,prjBuf:prjBuf2,cpgLbl:cpgLbl2};
+    document.getElementById('layer-panel-fname').textContent='📁 '+name+'.shp';
+  }else{
+    pendingFile=files[0];
+    document.getElementById('layer-panel-fname').textContent='📄 '+files[0].name;
+  }
+  await openLayerProjPanel();
+}
+
+async function openLayerProjPanel(){
+  document.getElementById('layer-proj-panel').classList.add('open');
+  await renderLayerProjList();
+}
+function cancelLayerProj(){pendingFile=null;document.getElementById('layer-proj-panel').classList.remove('open');}
+
+async function renderLayerProjList(){
+  await loadProjects();await loadAllLayers();
+  const el=document.getElementById('layer-proj-list');
+  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
+  el.innerHTML='';
+  projects.forEach(p=>{
+    const lc=allLayers.filter(l=>(l.projectName||l.project)===p.name).length;
+    const div=document.createElement('div');div.className='proj-item';
+    div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">레이어 ${lc}개</div></div>
+      <div style="font-size:18px;color:var(--dim)">›</div>`;
+    div.onclick=()=>selectLayerProject(p.name);el.appendChild(div);
+  });
+}
+
+async function selectLayerProject(projName){
+  document.getElementById('layer-proj-panel').classList.remove('open');
+  if(!pendingFile)return;
+  await loadLayerFile(pendingFile,projName);pendingFile=null;
+}
+
+function openNewProjFromLayer(){document.getElementById('layer-new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);}
+function closeLayerNewProj(){document.getElementById('layer-new-proj-modal').classList.remove('show');}
+async function confirmLayerNewProj(){
+  const name=document.getElementById('layer-new-proj-inp').value.trim();
+  if(!name){toast('이름을 입력해주세요');return;}
+  const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+  await createProjectData(name,color);
+  document.getElementById('layer-new-proj-inp').value='';
+  closeLayerNewProj();
+  await selectLayerProject(name);
+}
+
+async function loadLayerFile(file,projectName){
+  toast('파일 불러오는 중...');
+  try{
+    let geojson,displayName,multiLayers=null;
+    if(file._shpMulti){
+      displayName=file.name;
+      const shpObj={shp:file.shpBuf};
+      if(file.dbfBuf)shpObj.dbf=file.dbfBuf;
+      if(file.prjBuf)shpObj.prj=file.prjBuf;
+      else toast('⚠️ .prj 없음 - 좌표계를 몰라 위치가 틀릴 수 있어요');
+      if(file.cpgLbl)shpObj.cpg=file.cpgLbl;
+      geojson=await shp(shpObj);
+      if(file.prjBuf)geojson=fixShpCoords(geojson,file.prjBuf);
+      else geojson=ensureWgs84(geojson);   // prj 없는 파일 안전망 (한국 TM 추정 변환)
+    }else if(file.name.toLowerCase().endsWith('.kmz')){
+      displayName=file.name.replace(/\.kmz$/i,'');
+      const zip=await JSZip.loadAsync(await file.arrayBuffer());
+      const kmlF=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
+      if(!kmlF){toast('KMZ 안에 KML이 없어요');return;}
+      multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'),displayName);
+    }else if(file.name.endsWith('.zip')){
+      displayName=file.name.replace(/\.zip$/i,'');geojson=ensureWgs84(await shp(await file.arrayBuffer()));
+    }else if(file.name.endsWith('.geojson')||file.name.endsWith('.json')){
+      displayName=file.name.replace(/\.[^.]+$/,'');geojson=JSON.parse(await file.text());
+    }else if(file.name.endsWith('.kml')){
+      displayName=file.name.replace(/\.kml$/i,'');
+      multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'),displayName);
+    }else{toast('지원하지 않는 파일 형식');return;}
+
+    // 멀티레이어 처리 (KML/KMZ 폴더별)
+    if(multiLayers&&multiLayers.length>0){
+      let added=0;
+      // 수동 추가 → 원본/레이어 이름 블랙리스트에서 제거
+      removeScanBlacklist(projectName,displayName);
+      for(const ml of multiLayers){
+        if(!ml.geojson.features?.length)continue;
+        removeScanBlacklist(projectName,ml.name);
+        const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+        await saveLayerData(projectName,ml.name,ml.geojson,color,true,'circle',displayName);
+        const nl=allLayers[allLayers.length-1];
+        if(nl)addLeafletLayer(nl);
+        added++;
+      }
+      saveLayerOrder();
+      reapplyLayerOrder(); // 새 레이어들을 목록 순서대로 지도에 반영
+      renderSettingsLayerList();
+      const msg=added>1?`✅ ${added}개 레이어 추가됨 (${displayName})`:'✅ '+(multiLayers[0]?.name||displayName)+' 추가됨';
+      toast(msg);
+      return;
+    }
+
+    // 단일 레이어 처리
+    const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+    const name=displayName||file.name.replace(/\.[^.]+$/,'');
+    removeScanBlacklist(projectName, name); // 수동 추가 시 블랙리스트 제거 (원본/레이어 이름 동일)
+    await saveLayerData(projectName,name,geojson,color,true,'circle',displayName||name);
+    const newLayer=allLayers[allLayers.length-1];
+    if(newLayer)addLeafletLayer(newLayer);
+    saveLayerOrder();
+    reapplyLayerOrder(); // 새 레이어를 목록 순서(맨 아래)에 맞게 재배치
+    try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
+    renderSettingsLayerList();toast('✅ '+name+' 추가됨');
+  }catch(err){
+    console.error(err);
+    showErrDialog(err, '파일: '+((file&&file.name)||'?')+' / 프로젝트: '+projectName);
+  }
+}
+
+// ===== 파일 읽기 실패 상세 다이얼로그 =====
+let lastErrDetail='';
+function showErrDialog(err,ctx){
+  lastErrDetail=(ctx||'')+'\n'+(err&&(err.stack||err.message)||String(err));
+  document.getElementById('err-msg').textContent=lastErrDetail;
+  document.getElementById('err-overlay').style.display='flex';
+}
+function closeErrDialog(){document.getElementById('err-overlay').style.display='none';}
+function copyErrDetail(){
+  const t=document.getElementById('err-msg').textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(()=>toast('복사됨'),()=>toast('복사 실패'));
+  else toast('이 기기에서는 복사 미지원');
+}
+
+// ===== 블랙리스트 관리 =====
+function blAllEntries(){
+  let bl;try{bl=JSON.parse(localStorage.getItem('scanBL')||'{}');}catch(e){bl={};}
+  const out=[];
+  Object.keys(bl).sort().forEach(pj=>(bl[pj]||[]).forEach(nm=>out.push({proj:pj,name:nm})));
+  return out;
+}
+// 블랙리스트 건수 표기 (설정 열릴 때마다 갱신)
+function updateBlCount(){
+  const el=document.getElementById('bl-count');
+  if(el){const n=blAllEntries().length;el.textContent=n?'('+n+')':'';}
+}
+function openBlacklistManager(){
+  const list=blAllEntries();
+  const el=document.getElementById('settings-layer-list');
+  const blBtn=document.querySelector('[onclick="openBlacklistManager()"]');
+  if(blBtn)blBtn.style.display='none';
+  let html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+    '<div style="font-size:13px;font-weight:700">🚫 삭제한 파일 목록 ('+list.length+'개)</div>'+
+    '<button class="bl-restore-btn" style="color:var(--danger);border-color:rgba(255,68,68,.4);background:rgba(255,68,68,.08)" '+
+    'onclick="blClearAll('+list.length+')">전체 삭제</button></div>';
+  if(!list.length)
+    html+='<div style="font-size:12px;color:var(--dim);padding:8px 0">삭제 이력이 없어요</div>';
+  list.forEach((e,i)=>{
+    const attr=encodeURIComponent(e.proj)+"','";
+    const nmA=encodeURIComponent(e.name);
+    html+='<div class="layer-item" style="padding-left:4px">'+
+      '<div class="layer-info"><div class="layer-name" style="font-size:13px">'+e.name.replace(/'/g,'&#39;')+'</div>'+
+      '<div class="layer-sub">📁 '+e.proj.replace(/'/g,'&#39;')+'</div></div>'+
+      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">🔄 복구</button></div>';
+  });
+  html+='<button class="add-btn-outline" style="width:100%;margin-top:8px" onclick="closeBlacklistManager()">← 레이어 목록으로</button>';
+  el.innerHTML=html;
+}
+function closeBlacklistManager(){
+  const blBtn=document.querySelector('[onclick="openBlacklistManager()"]');
+  if(blBtn)blBtn.style.display='';
+  renderSettingsLayerList();
+}
+async function blRemoveOne(pjEnc,nmEnc){
+  const pj=decodeURIComponent(pjEnc), nm=decodeURIComponent(nmEnc);
+  // 원본명+레이어명 쌍 등 관련 이력 전부 제거
+  removeScanBlacklist(pj,nm);
+  let bl;try{bl=JSON.parse(localStorage.getItem('scanBL')||'{}');}catch(e){bl={};}
+  Object.keys(bl).forEach(p=>{(bl[p]||[]).forEach(n=>{
+    if(blNorm(n)===blNorm(nm)||blNorm(n)===blNorm(pj))removeScanBlacklist(p,n);
+  });});
+  toast('복구 중... (폴더 다시 읽는 중)');
+  const added=await scanProjectLayers(pj,{bl:[],fail:[]});
+  if(added>0){
+    await loadAllLayers();
+    allLayers.forEach(l=>{
+      const key=l.geojsonPath||l.id;
+      if(!leafletLayers[key])addLeafletLayer(l);
+    });
+    reapplyLayerOrder();
+  }
+  renderSettingsLayerList();
+  updateBlCount();
+  toast(added>0?`✅ 복구됨: ${nm} (${added}개 레이어)`:'해제됨 — 기기에 해당 파일이 없어요 (USB로 넣은 뒤 폴더 읽기)');
+}
+async function blClearAll(n){
+  if(n>0&&!confirm('삭제 이력을 전부 지울까요?\n지금 바로 폴더를 다시 읽어 복구합니다.'))return;
+  localStorage.removeItem('scanBL');
+  toast('복구 중... (전체 폴더 다시 읽는 중)');
+  let total=0;
+  await loadProjects();
+  for(const p of projects){total+=await scanProjectLayers(p.name,{bl:[],fail:[]});}
+  if(total>0){
+    await loadAllLayers();
+    allLayers.forEach(l=>{
+      const key=l.geojsonPath||l.id;
+      if(!leafletLayers[key])addLeafletLayer(l);
+    });
+    reapplyLayerOrder();
+  }
+  renderSettingsLayerList();
+  updateBlCount();
+  toast(total>0?`✅ ${total}개 레이어 복구됨`:'해제됨 — 기기에 파일이 없어요');
+}
+
+async function loadFromURL(){
+  const url=document.getElementById('layer-url-inp').value.trim();
+  if(!url){toast('URL을 입력해주세요');return;}
+  toast('URL 불러오는 중...');
+  try{
+    let filename=url.split('/').pop().split('?')[0]||'layer';
+    let file;
+
+    if(IS_APK){
+      // Android 네이티브 요청 (CORS 없음)
+      const result=AndroidBridge.fetchUrl(url);
+      if(result.startsWith('error:'))throw new Error(result.substring(6));
+
+      if(result.startsWith('base64:')){
+        // KMZ (바이너리)
+        const b64=result.substring(7);
+        const blob=new Blob([b64ToArrayBuffer(b64)],{type:'application/vnd.google-earth.kmz'});
+        if(!filename.toLowerCase().endsWith('.kmz'))filename+='.kmz';
+        file=new File([blob],filename,{type:'application/vnd.google-earth.kmz'});
+      }else{
+        // KML/GeoJSON (텍스트)
+        const text=result.substring(5); // "text:" 제거
+        const ext=filename.toLowerCase().endsWith('.geojson')?'geojson':'kml';
+        file=new File([text],filename.endsWith('.'+ext)?filename:filename+'.'+ext,
+          {type:'text/plain'});
+      }
+    }else{
+      // 브라우저 fallback
+      const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);
+      const isKmz=url.toLowerCase().includes('.kmz');
+      if(isKmz){
+        const blob=await res.blob();
+        file=new File([blob],filename.endsWith('.kmz')?filename:filename+'.kmz',
+          {type:'application/vnd.google-earth.kmz'});
+      }else{
+        const text=await res.text();
+        file=new File([text],filename.endsWith('.kml')?filename:filename+'.kml',
+          {type:'application/vnd.google-earth.kml+xml'});
+      }
+    }
+
+    document.getElementById('layer-url-inp').value='';
+    document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
+    pendingFile=file;
+    await renderLayerProjList();
+    document.getElementById('layer-proj-panel').classList.add('open');
+
+  }catch(err){toast('URL 불러오기 실패: '+err.message);console.error(err);}
+}
+
+function parsePlacemarks(pms){
+  const features=[];
+  pms.forEach(pm=>{
+    const name=pm.querySelector('name')?.textContent||'';
+    const raw=pm.querySelector('coordinates')?.textContent?.trim();if(!raw)return;
+    const pts=raw.split(/\s+/).map(c=>{const a=c.split(',');return[parseFloat(a[0]),parseFloat(a[1])];}).filter(p=>!isNaN(p[0]));
+    if(!pts.length)return;
+    features.push({type:'Feature',geometry:pts.length===1?{type:'Point',coordinates:pts[0]}:{type:'LineString',coordinates:pts},properties:{name}});
+  });
+  return features;
+}
+
+// KML → 단일 GeoJSON (기존 호환용)
+function kmlToGeoJSON(kml){
+  return{type:'FeatureCollection',features:parsePlacemarks(kml.querySelectorAll('Placemark'))};
+}
+
+// KML → 폴더별 멀티 레이어 [{name, geojson}]
+function kmlToMultiGeoJSON(kml,baseName){
+  const layers=[];
+  const folders=kml.querySelectorAll('Document > Folder, Folder');
+
+  if(folders.length>0){
+    folders.forEach(folder=>{
+      const name=folder.querySelector(':scope > name')?.textContent||baseName;
+      // 이 폴더 직계 Placemark만
+      const pms=[...folder.querySelectorAll(':scope > Placemark')];
+      // 하위 폴더도 재귀
+      const subFolders=folder.querySelectorAll(':scope > Folder');
+      if(subFolders.length>0){
+        subFolders.forEach(sf=>{
+          const sfName=sf.querySelector(':scope > name')?.textContent||name;
+          const sfFeatures=parsePlacemarks(sf.querySelectorAll('Placemark'));
+          if(sfFeatures.length>0)layers.push({name:sfName,geojson:{type:'FeatureCollection',features:sfFeatures}});
+        });
+      }
+      if(pms.length>0){
+        layers.push({name,geojson:{type:'FeatureCollection',features:parsePlacemarks(pms)}});
+      }
+    });
+  }
+
+  // Document 직계 Placemark (폴더 밖)
+  const directPms=[...kml.querySelectorAll('Document > Placemark')];
+  if(directPms.length>0){
+    const docName=kml.querySelector('Document > name')?.textContent||baseName;
+    layers.push({name:docName,geojson:{type:'FeatureCollection',features:parsePlacemarks(directPms)}});
+  }
+
+  // 아무것도 없으면 전체 파싱
+  if(layers.length===0){
+    layers.push({name:baseName,geojson:kmlToGeoJSON(kml)});
+  }
+
+  return layers;
+}
+
+// ===== 내보내기 (설정 내) =====
+function renderExportInSettings(){
+  const el=document.getElementById('settings-exp-list');if(!el)return;
+  let html='';
+  const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
+  if(!gpsPhotos.length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:0 0 10px">GPS 사진이 없어요</div>';return;}
+
+  const groups={};
+  gpsPhotos.forEach(p=>{
+    const key=p.projectName||'none';
+    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    groups[key].photos.push(p);
+  });
+
+  Object.entries(groups).forEach(([key,g])=>{
+    const safe=encodeURIComponent(g.name);
+    html+=`<div class="exp-card">
+      <div class="exp-card-hdr">
+        <div class="exp-proj-dot" style="background:${g.color}"></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">${g.name}</div><div class="exp-proj-stat">📷 ${g.photos.length}장 · GPS ${g.photos.length}장</div></div>
+      </div>
+      <div class="exp-fmt-row">
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${safe}')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${safe}')"><span>📄</span><span>KML</span><small>핀만</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${safe}')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+      </div>
+    </div>`;
+  });
+
+  if(Object.keys(groups).length>1){
+    html+=`<div class="exp-card exp-all-card">
+      <div class="exp-card-hdr">
+        <div class="exp-proj-dot" style="background:var(--dim)"></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">전체 내보내기</div><div class="exp-proj-stat">📷 ${gpsPhotos.length}장</div></div>
+      </div>
+      <div class="exp-fmt-row">
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz','전체')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml','전체')"><span>📄</span><span>KML</span><small>핀만</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson','전체')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+async function exportByProject(key,format,nameSlug){
+  const slug=decodeURIComponent(nameSlug);
+  const list=key==='all'?allPhotos.filter(p=>p.lat&&p.lon):
+    key==='none'?allPhotos.filter(p=>(!p.projectName)&&p.lat&&p.lon):
+    allPhotos.filter(p=>p.projectName===key&&p.lat&&p.lon);
+  if(!list.length){toast('GPS 사진이 없어요');return;}
+  toast('생성 중...');
+  try{
+    if(format==='kmz')await doKMZ(list,slug);
+    else if(format==='kml')doKML(list,slug);
+    else doGeoJSON(list,slug);
+  }catch(e){toast('내보내기 실패: '+e.message);}
+}
+
+async function doKMZ(list,slug){
+  const zip=new JSZip(),imgs=zip.folder('files');let marks='';
+  for(let i=0;i<list.length;i++){
+    const p=list[i];const fn=`photo_${i+1}.jpg`;
+    let blob;
+    if(IS_APK){
+      const b64=AndroidBridge.readFileAsBase64(p.path);
+      const res=await fetch('data:image/jpeg;base64,'+b64);
+      blob=await res.blob();
+    }else{blob=p.blob;}
+    imgs.file(fn,await blob.arrayBuffer());
+    marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name>
+    <description><![CDATA[<img src="files/${fn}" width="300"><br>
+    <b>${kmlEsc(p.projectName||'')}</b><br>${p.description?'▸ '+kmlEsc(p.description)+'<br>':''}${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}]]></description>
+    <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
+    <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
+  }
+  zip.file('doc.kml',`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`);
+  saveFile(await zip.generateAsync({type:'blob'}),`${slug}_${dateStr()}.kmz`,'application/vnd.google-earth.kmz');
+}
+function kmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function doKML(list,slug){
+  let marks='';
+  list.forEach((p,i)=>{marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name><description>${kmlEsc(p.description)} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
+  saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${slug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
+}
+function doGeoJSON(list,slug){
+  const features=list.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat,p.alt||0]},properties:{project:p.projectName||'',description:p.description||'',time:p.time}}));
+  saveFile(new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'}),`${slug}_${dateStr()}.geojson`,'application/json');
+}
+
+
+
+
+function concatU8(...arrs){const len=arrs.reduce((s,a)=>s+a.length,0);const r=new Uint8Array(len);let o=0;for(const a of arrs){r.set(a,o);o+=a.length;}return r;}
+function u8(v){return new Uint8Array([v&255]);}
+function u16le(v){const b=new Uint8Array(2);b[0]=v&255;b[1]=(v>>8)&255;return b;}
+function u32le(v){const b=new Uint8Array(4);b[0]=v&255;b[1]=(v>>8)&255;b[2]=(v>>16)&255;b[3]=(v>>>24)&255;return b;}
+function asciiBytes(s){const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&255;return b;}
+function toRat(v,den){const num=Math.round(v*den);return [num,den];}
+
+function buildGpsExif(lat,lon,alt){
+  const latRef=lat<0?'S':'N', lonRef=lon<0?'W':'E';
+  const dms=(v)=>{v=Math.abs(v);const d=Math.floor(v);const mF=(v-d)*60;const m=Math.floor(mF);const s=(mF-m)*60;return [toRat(d,1),toRat(m,1),toRat(s,10000)];};
+  const latV=dms(lat), lonV=dms(lon);
+  const IFD0_OFF=8;
+  // IFD0: 2항목(Exif포인터+GPS포인터)+next → 2+24+4=30바이트 → ExifIFD@38
+  // ExifIFD: 1항목(ExifVersion, 4바이트 인라인)+next → 2+12+4=18바이트 → GPSIFD@56
+  const EXIF_OFF=38, GPS_OFF=56;
+  const ifd0=concatU8(u16le(2),
+    u16le(0x8769),u16le(4),u32le(1),u32le(EXIF_OFF),
+    u16le(0x8825),u16le(4),u32le(1),u32le(GPS_OFF),
+    u32le(0));
+  const exifIfd=concatU8(u16le(1),
+    u16le(0x9000),u16le(7),u32le(4),u32le((0x30)|(0x32<<8)|(0x33<<16)|(0x30<<24)), // '0230' 바이트 순서
+    u32le(0));
+  // GPS 항목: [tag,count,type,size, 값 or 마커]
+  const gpsMeta=[
+    [0x0000,4,7,4,[0x32,0x33,0x30,0x30]],                 // '2300' EXIF 2.3
+    [0x0001,2,2,2,[latRef.charCodeAt(0),0]],
+    [0x0002,3,5,24,'LATVAL'],
+    [0x0003,2,2,2,[lonRef.charCodeAt(0),0]],
+    [0x0004,3,5,24,'LONVAL'],
+    [0x0005,1,1,1,[0,0,0,0]],                             // altRef 0=해발
+    [0x0006,1,5,8,'ALTVAL'],
+  ].filter(e=>!(e[0]===0x0006&&alt==null));
+  let dataOff=GPS_OFF+2+12*gpsMeta.length+4;
+  const valChunks=[]; const entries=[];
+  for(const [tag,cnt,type,sz,val] of gpsMeta){
+    if(!Array.isArray(val)&&typeof val==='string'){
+      entries.push(concatU8(u16le(tag),u16le(type),u32le(cnt),u32le(dataOff)));
+      if(val==='LATVAL')valChunks.push(concatU8(...latV.flatMap(r=>[u32le(r[0]),u32le(r[1])])));
+      else if(val==='LONVAL')valChunks.push(concatU8(...lonV.flatMap(r=>[u32le(r[0]),u32le(r[1])])));
+      else if(val==='ALTVAL'){const ar=toRat(alt,100);valChunks.push(concatU8(u32le(ar[0]),u32le(ar[1])));}
+      dataOff+=sz;
+    }else{
+      const b=val.slice(0,4); while(b.length<4)b.push(0);
+      entries.push(concatU8(u16le(tag),u16le(type),u32le(cnt),u32le(b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<24))));
+    }
+  }
+  const gpsIfd=concatU8(u16le(gpsMeta.length),...entries,u32le(0));
+  const tiff=concatU8(asciiBytes('II'),u16le(42),u32le(IFD0_OFF),ifd0,exifIfd,gpsIfd,...valChunks);
+  const payload=concatU8(asciiBytes('Exif\0\0'),tiff);
+  return concatU8(u8(0xFF),u8(0xE1),u16be(payload.length+2),payload);
+}
+function u16be(v){const b=new Uint8Array(2);b[0]=(v>>8)&255;b[1]=v&255;return b;}
+
+function injectGpsExifBytes(jpegBytes,lat,lon,alt){
+  if(jpegBytes[0]!==0xFF||jpegBytes[1]!==0xD8)throw new Error('JPEG 아님');
+  let off=2, app1=null;
+  while(off<jpegBytes.length-1){
+    if(jpegBytes[off]!==0xFF){throw new Error('마커 정렬 깨짐@'+off);}
+    const marker=jpegBytes[off+1];
+    if(marker===0xDA||marker===0xD9)break;
+    const len=(jpegBytes[off+2]<<8)|jpegBytes[off+3];
+    if(marker===0xE1){app1=[off,len];break;}
+    off+=2+len;
+  }
+  const app1seg=buildGpsExif(lat,lon,alt);
+  let out;
+  if(app1){
+    const [s,len]=app1;
+    out=concatU8(jpegBytes.slice(0,s),app1seg,jpegBytes.slice(s+2+len));
+  }else{
+    out=concatU8(jpegBytes.slice(0,2),app1seg,jpegBytes.slice(2));
+  }
+  return out;
+}
+
+// 브라우저용: Blob → EXIF 주입 → Blob (실패 시 원본 반환, 저장은 항상 성공)
+function b64FromBytes(bytes){let s='';const CH=0x8000;for(let i=0;i<bytes.length;i+=CH)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+CH));return btoa(s);}
+async function injectGpsExif(blob,gps){
+  try{
+    if(!gps||gps.latitude==null||gps.longitude==null)return blob;
+    const bytes=new Uint8Array(await blob.arrayBuffer());
+    const out=injectGpsExifBytes(bytes,gps.latitude,gps.longitude,gps.altitude==null?null:gps.altitude);
+    const res=await fetch('data:image/jpeg;base64,'+b64FromBytes(out));
+    return await res.blob();
+  }catch(e){console.error('EXIF 주입 실패(원본으로 저장):',e);return blob;}
+}
+
+function saveFile(blob,filename,mimeType){
+  if(window.AndroidBridge){
+    const reader=new FileReader();
+    reader.onload=()=>AndroidBridge.saveFile(reader.result,filename,mimeType);
+    reader.readAsDataURL(blob);
+  }else{
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;document.body.appendChild(a);a.click();
+    document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+}
+
+// ===== KMZ 가져오기 =====
+async function onImportKMZ(e){
+  const file=e.target.files[0];if(!file)return;e.target.value='';
+  const prog=document.getElementById('import-prog');
+  const bar=document.getElementById('import-bar');
+  const txt=document.getElementById('import-prog-txt');
+  try{
+    prog.classList.add('show');bar.style.width='10%';txt.textContent='KMZ 읽는 중...';
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const kmlFile=zip.file('doc.kml');if(!kmlFile){toast('doc.kml 없음');return;}
+    bar.style.width='25%';txt.textContent='KML 분석 중...';
+    const kml=new DOMParser().parseFromString(await kmlFile.async('string'),'text/xml');
+    const pms=[...kml.querySelectorAll('Placemark')];
+    await loadProjects();
+    const projMap={};projects.forEach(p=>projMap[p.name]=p);
+    let imported=0,skipped=0;
+    for(let i=0;i<pms.length;i++){
+      bar.style.width=(25+Math.round(70*(i/pms.length)))+'%';
+      txt.textContent=`${i+1}/${pms.length}장...`;
+      const pm=pms[i];
+      const coordStr=pm.querySelector('Point coordinates')?.textContent?.trim()||'';
+      if(!coordStr){skipped++;continue;}
+      const [lonS,latS,altS]=coordStr.split(',');
+      const lon=parseFloat(lonS),lat=parseFloat(latS),alt=parseFloat(altS)||null;
+      if(isNaN(lat)||isNaN(lon)){skipped++;continue;}
+      const timeStr=pm.querySelector('TimeStamp when')?.textContent||new Date().toISOString();
+      const projName=pm.querySelector('name')?.textContent?.trim()||'가져온 사진';
+      const descHTML=pm.querySelector('description')?.textContent||'';
+      let description='',imgPath='';
+      if(descHTML){const tmp=document.createElement('div');tmp.innerHTML=descHTML;imgPath=tmp.querySelector('img')?.getAttribute('src')||'';const t=tmp.textContent||'';const dm=t.match(/▸\s*([^\n]+)/);if(dm)description=dm[1].trim();}
+      const imgFile=imgPath?zip.file(imgPath):null;
+      if(!imgFile){skipped++;continue;}
+      const photoData=await imgFile.async('arraybuffer');
+      const blob=new Blob([photoData],{type:'image/jpeg'});
+      let proj=projMap[projName];
+      if(!proj){
+        const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
+        proj=await createProjectData(projName,color);
+        projMap[projName]=proj;await loadProjects();
+      }
+      await savePhotoData(blob,{time:timeStr,lat,lon,alt,acc:null,projectId:proj.id||null,projectName:proj.name,projectColor:proj.color,description});
+      imported++;
+    }
+    bar.style.width='100%';txt.textContent='완료!';
+    setTimeout(()=>prog.classList.remove('show'),1500);
+    await loadAllPhotos();
+    toast(imported>0?`✅ ${imported}장 가져옴`:`가져온 사진 없음 (${skipped}건 스킵)`);
+    renderExportInSettings();
+  }catch(err){prog.classList.remove('show');toast('가져오기 실패: '+err.message);}
+}
+
+// ===== 전체 삭제 =====
+async function clearAll(){
+  if(!confirm('모든 데이터를 삭제할까요?\n\n⚠️ APK에서는 현장캠 폴더의 모든 파일이 삭제돼요'))return;
+  if(IS_APK){
+    for(const p of projects)AndroidBridge.deleteProject(p.name);
+  }else{
+    await dbClear('photos');await dbClear('layers');await dbClear('projects');
+  }
+  projects=[];allPhotos=[];allLayers=[];selectedProject=null;selectProject(null);
+  Object.values(photoLayerGroups).forEach(lg=>map&&map.removeLayer(lg));
+  photoLayerGroups={};photoLayerVisible={};savePhotoLayerVisible();
+  Object.values(leafletLayers).forEach(l=>map&&map.removeLayer(l));
+  leafletLayers={};
+  toast('전체 삭제됨');
+}
+
+// ===== 라이트박스 =====
+function openLightbox(url,meta){
+  document.getElementById('lb-img').src=url;
+  document.getElementById('lb-meta').innerHTML=meta.replace(/\n/g,'<br>');
+  document.getElementById('lightbox').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('show');
+  document.body.style.overflow='';
+}
+
+// ===== 유틸 =====
+function dateStr(){const n=new Date();return`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;}
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
+
+// ===== 초기화 =====
+async function initApp(){
+  if(!IS_APK)await initDB();
+  await loadProjects();
+  await loadAllPhotos();
+  await loadAllLayers();
+  startGPS();
+  document.getElementById('hud-time').textContent=fmtNow();
+  if(IS_APK){
+    basePath=AndroidBridge.getBasePath();
+    toast('📁 '+basePath);
+  }
+}
+// loadLibs보다 늦게 로드되면 이벤트로 알림
+window.dispatchEvent(new Event('appReady'));
+</script>
+</body>
+</html>
