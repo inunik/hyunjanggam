@@ -321,7 +321,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <div style="display:flex;align-items:center;gap:10px">
     <div class="gps-pill">
       <div class="gps-dot" id="gps-dot"></div>
-      <span id="gps-txt">GPS 대기</span>
+      <span id="gps-txt" data-i18n="g.wait">GPS 대기</span>
     </div>
     <button class="hdr-icon-btn" onclick="openSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -336,45 +336,51 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <div class="settings-overlay" id="settings-overlay" onclick="closeSettings()"></div>
 <div class="settings-panel" id="settings-panel">
   <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
-    <h3>설정</h3>
+    <h3 data-i18n="s.title">설정</h3>
     <button class="close-btn" onclick="closeSettings()">✕</button>
   </div>
   <div style="padding:16px;overflow-y:auto;flex:1">
 
-    <div class="set-section">저장 위치</div>
-    <div class="set-card" style="margin-bottom:12px">
-      <div class="set-label">📁 현장캠 폴더</div>
-      <div class="set-sub" id="base-path-display" style="margin-top:4px;word-break:break-all">내부저장소/현장캠/</div>
-      <div style="font-size:10px;color:var(--accent);margin-top:6px">파일관리자 · USB에서 접근 가능</div>
+    <div class="set-section" data-i18n="s.lang">Language / 언어</div>
+    <div class="set-card" style="margin-bottom:12px;display:flex;gap:8px">
+      <button class="map-type-btn" id="lang-ko" onclick="setLang('ko')">🇰🇷 한국어</button>
+      <button class="map-type-btn" id="lang-en" onclick="setLang('en')">🇺🇸 English</button>
     </div>
 
-    <div class="set-section">지도</div>
+    <div class="set-section" data-i18n="s.storage">저장 위치</div>
     <div class="set-card" style="margin-bottom:12px">
-      <div class="set-label" style="margin-bottom:8px">🇰🇷 국내용</div>
+      <div class="set-label" data-i18n="s.folder">📁 현장캠 폴더</div>
+      <div class="set-sub" id="base-path-display" data-i18n="s.internalpath" style="margin-top:4px;word-break:break-all">내부저장소/현장캠/</div>
+      <div style="font-size:10px;color:var(--accent);margin-top:6px" data-i18n="s.fileaccess">파일관리자 · USB에서 접근 가능</div>
+    </div>
+
+    <div class="set-section" data-i18n="s.map">지도</div>
+    <div class="set-card" style="margin-bottom:12px">
+      <div class="set-label" data-i18n="s.domestic" style="margin-bottom:8px">🇰🇷 국내용</div>
       <div class="map-type-btns" style="margin-bottom:12px">
         <button class="map-type-btn on" id="mtype-vworld" onclick="setMapType('vworld')">VWorld</button>
-        <button class="map-type-btn" id="mtype-vworld-sat" onclick="setMapType('vworld-sat')">🛰️ VWorld위성</button>
-        <button class="map-type-btn" id="mtype-vworld-gray" onclick="setMapType('vworld-gray')">지적도</button>
+        <button class="map-type-btn" id="mtype-vworld-sat" data-i18n="s.vworldsat" onclick="setMapType('vworld-sat')">🛰️ VWorld위성</button>
+        <button class="map-type-btn" id="mtype-vworld-gray" data-i18n="s.cadmap" onclick="setMapType('vworld-gray')">지적도</button>
       </div>
-      <div style="font-size:10px;color:var(--gps);margin-bottom:12px">↑ 지적도는 API 키 필요 (무료)</div>
-      <div class="set-label" style="margin-bottom:8px">🌏 해외용</div>
+      <div style="font-size:10px;color:var(--gps);margin-bottom:12px" data-i18n="s.cadnote">↑ 지적도는 API 키 필요 (무료)</div>
+      <div class="set-label" data-i18n="s.intl" style="margin-bottom:8px">🌏 해외용</div>
       <div class="map-type-btns">
-        <button class="map-type-btn" id="mtype-esri-sat" onclick="setMapType('esri-sat')">🛰️ ESRI위성</button>
+        <button class="map-type-btn" id="mtype-esri-sat" data-i18n="s.esrisat" onclick="setMapType('esri-sat')">🛰️ ESRI위성</button>
         <button class="map-type-btn" id="mtype-osm" onclick="setMapType('osm')">OSM</button>
       </div>
     </div>
 
-    <div class="set-section">VWorld API 키 (지적도용)</div>
+    <div class="set-section" data-i18n="s.vwkey">VWorld API 키 (지적도용)</div>
     <div class="set-card" style="margin-bottom:12px">
-      <div class="set-sub">api.vworld.kr 무료 발급</div>
+      <div class="set-sub" data-i18n="s.vwfree">api.vworld.kr 무료 발급</div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="set-inp" id="vworld-key-inp" type="text" placeholder="API 키 붙여넣기" autocomplete="off">
-        <button class="set-save-btn" onclick="saveVWorldKey()">저장</button>
+        <input class="set-inp" id="vworld-key-inp" type="text" data-i18n-ph="s.ph.pastekey" placeholder="API 키 붙여넣기" autocomplete="off">
+        <button class="set-save-btn" data-i18n="s.save" onclick="saveVWorldKey()">저장</button>
       </div>
       <div class="set-key-status" id="vworld-key-status"></div>
     </div>
 
-    <div class="set-section">레이어 관리</div>
+    <div class="set-section" data-i18n="s.layers">레이어 관리</div>
     <div class="set-card" style="margin-bottom:12px">
       <div id="settings-layer-list" style="margin-bottom:10px"></div>
       <button class="add-btn-outline" style="width:100%;margin-bottom:8px"
@@ -386,34 +392,34 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         🔍 폴더에서 파일 읽기 (USB로 넣은 파일)
       </button>
       <div class="url-input-row">
-        <input class="url-inp" id="layer-url-inp" type="url" placeholder="🔗 KML/KMZ URL">
-        <button class="url-load-btn" onclick="loadFromURL()">불러오기</button>
+        <input class="url-inp" id="layer-url-inp" type="url" data-i18n-ph="s.ph.url" placeholder="🔗 KML/KMZ URL">
+        <button class="url-load-btn" data-i18n="s.load" onclick="loadFromURL()">불러오기</button>
       </div>
       <button class="add-btn-outline" style="width:100%;margin-top:8px;border-color:var(--danger);color:var(--danger)"
         onclick="openBlacklistManager()">
-        🚫 삭제한 파일 목록 (블랙리스트) <span id="bl-count"></span>
+        <span data-i18n="s.blist">🚫 삭제한 파일 목록 (블랙리스트) </span><span id="bl-count"></span>
       </button>
     </div>
 
-    <div class="set-section">내보내기 / 가져오기</div>
+    <div class="set-section" data-i18n="s.expoimp">내보내기 / 가져오기</div>
     <div style="padding:0">
       <div id="settings-exp-list"></div>
       <div class="imp-banner" onclick="document.getElementById('kmz-import-inp').click()">
         <div class="imp-icon">📥</div>
         <div class="imp-info">
-          <div class="imp-title">KMZ 가져오기</div>
-          <div class="imp-sub">다른 사람이 내보낸 KMZ 합치기</div>
+          <div class="imp-title" data-i18n="s.kmzimp">KMZ 가져오기</div>
+          <div class="imp-sub" data-i18n="s.kmzimp2">다른 사람이 내보낸 KMZ 합치기</div>
         </div>
         <div class="imp-arr">›</div>
       </div>
       <div class="imp-prog" id="import-prog">
-        <span id="import-prog-txt" style="font-size:12px;flex-shrink:0">처리 중...</span>
+        <span id="import-prog-txt" data-i18n="s.processing" style="font-size:12px;flex-shrink:0">처리 중...</span>
         <div class="prog-wrap"><div class="prog-bar" id="import-bar"></div></div>
       </div>
     </div>
 
-    <div class="set-section">데이터</div>
-    <button class="exp-btn-full" style="background:rgba(255,68,68,.1);color:var(--danger)" onclick="clearAll()">
+    <div class="set-section" data-i18n="s.data">데이터</div>
+    <button class="exp-btn-full" data-i18n="s.delall" style="background:rgba(255,68,68,.1);color:var(--danger)" onclick="clearAll()">
       🗑 전체 삭제
     </button>
 
@@ -431,14 +437,14 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>아래 버튼을 눌러 카메라를 시작하세요</p>
-      <button class="start-btn" onclick="startCamera()">📷 카메라 시작</button>
+      <p data-i18n="c.starthint">아래 버튼을 눌러 카메라를 시작하세요</p>
+      <button class="start-btn" data-i18n="c.start" onclick="startCamera()">📷 카메라 시작</button>
     </div>
     <div class="cam-overlay" id="cam-overlay" style="display:none">
       <div class="hud">
         <div class="hud-proj">
           <div class="hud-proj-dot" id="hud-dot" style="background:var(--dim)"></div>
-          <span id="hud-proj">프로젝트 없음</span>
+          <span id="hud-proj" data-i18n="c.noproj">프로젝트 없음</span>
         </div>
         <div class="hud-desc" id="hud-desc" style="display:none"></div>
         <div class="hud-gps">
@@ -452,11 +458,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         <div class="proj-select-row">
           <button class="proj-chip" onclick="openProjPanel()">
             <div class="proj-chip-dot" id="chip-dot"></div>
-            <span class="proj-chip-label" id="chip-label">프로젝트 선택 ▾</span>
+            <span class="proj-chip-label" id="chip-label" data-i18n="c.pickproj">프로젝트 선택 ▾</span>
           </button>
         </div>
         <input class="desc-inp" id="desc-inp" type="text"
-          placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열)" maxlength="60" oninput="updateHUD()">
+          data-i18n-ph="c.ph.desc" placeholder="📝 촬영 부위 설명 (예: 3번 교각 균열)" maxlength="60" oninput="updateHUD()">
         <div class="cap-row">
           <button class="side-btn" onclick="goTab('map')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -480,24 +486,24 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <!-- 프로젝트 선택 패널 -->
     <div class="bottom-panel" id="proj-panel">
       <div class="panel-hdr">
-        <h3>프로젝트 선택</h3>
+        <h3 data-i18n="p.pick">프로젝트 선택</h3>
         <button class="close-btn" onclick="closeProjPanel()">✕</button>
       </div>
       <div class="panel-body" id="proj-select-list"></div>
       <div class="add-row">
-        <button class="add-btn-outline" onclick="closeProjPanel();openNewProjModal()">+ 새 프로젝트 추가</button>
+        <button class="add-btn-outline" data-i18n="p.addnew" onclick="closeProjPanel();openNewProjModal()">+ 새 프로젝트 추가</button>
       </div>
     </div>
 
     <!-- 새 프로젝트 모달 -->
     <div class="modal-overlay" id="new-proj-modal">
       <div class="modal-card">
-        <div class="modal-title">새 프로젝트 추가</div>
-        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
-        <input class="modal-inp" id="new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-title" data-i18n="p.new">새 프로젝트 추가</div>
+        <div class="modal-sub" data-i18n="p.newsub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="new-proj-inp" data-i18n-ph="p.ph.example" placeholder="예: 1공구 도로공사" maxlength="40">
         <div class="modal-btns">
-          <button class="modal-btn cancel" onclick="closeNewProjModal()">취소</button>
-          <button class="modal-btn confirm" onclick="confirmNewProj()">추가</button>
+          <button class="modal-btn cancel" data-i18n="m.cancel" onclick="closeNewProjModal()">취소</button>
+          <button class="modal-btn confirm" data-i18n="m.add" onclick="confirmNewProj()">추가</button>
         </div>
       </div>
     </div>
@@ -506,8 +512,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
   <!-- ===== 갤러리 ===== -->
   <div class="pane" id="t-gal">
     <div class="gal-hdr">
-      <h2>사진 목록</h2>
-      <span class="gal-cnt" id="gal-cnt">0장</span>
+      <h2 data-i18n="g.title">사진 목록</h2>
+      <span class="gal-cnt" id="gal-cnt" data-i18n="g.count0">0장</span>
     </div>
     <div class="gal-filter" id="gal-filter"></div>
     <div id="gal-list"></div>
@@ -534,26 +540,26 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="bottom-panel" id="layer-proj-panel">
       <div class="panel-hdr">
         <div>
-          <h3>프로젝트 선택</h3>
+          <h3 data-i18n="p.pick">프로젝트 선택</h3>
           <div style="font-size:11px;color:var(--accent);margin-top:2px" id="layer-panel-fname"></div>
         </div>
         <button class="close-btn" onclick="cancelLayerProj()">✕</button>
       </div>
       <div class="panel-body" id="layer-proj-list"></div>
       <div class="add-row">
-        <button class="add-btn-outline" onclick="openNewProjFromLayer()">+ 새 프로젝트 추가</button>
+        <button class="add-btn-outline" data-i18n="p.addnew" onclick="openNewProjFromLayer()">+ 새 프로젝트 추가</button>
       </div>
     </div>
 
     <!-- 레이어용 새 프로젝트 모달 -->
     <div class="modal-overlay" id="layer-new-proj-modal">
       <div class="modal-card">
-        <div class="modal-title">새 프로젝트 추가</div>
-        <div class="modal-sub">공사명이나 지역명을 입력해주세요</div>
-        <input class="modal-inp" id="layer-new-proj-inp" placeholder="예: 1공구 도로공사" maxlength="40">
+        <div class="modal-title" data-i18n="p.new">새 프로젝트 추가</div>
+        <div class="modal-sub" data-i18n="p.newsub">공사명이나 지역명을 입력해주세요</div>
+        <input class="modal-inp" id="layer-new-proj-inp" data-i18n-ph="p.ph.example" placeholder="예: 1공구 도로공사" maxlength="40">
         <div class="modal-btns">
-          <button class="modal-btn cancel" onclick="closeLayerNewProj()">취소</button>
-          <button class="modal-btn confirm" onclick="confirmLayerNewProj()">추가 후 선택</button>
+          <button class="modal-btn cancel" data-i18n="m.cancel" onclick="closeLayerNewProj()">취소</button>
+          <button class="modal-btn confirm" data-i18n="m.addsel" onclick="confirmLayerNewProj()">추가 후 선택</button>
         </div>
       </div>
     </div>
@@ -573,21 +579,21 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
       <circle cx="12" cy="13" r="4"/>
     </svg>
-    <span>카메라</span>
+    <span data-i18n="n.cam">카메라</span>
   </button>
   <button class="nb" id="nb-gal" onclick="goTab('gal')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
       <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
     </svg>
-    <span>목록</span>
+    <span data-i18n="n.gal">목록</span>
   </button>
   <button class="nb" id="nb-map" onclick="goTab('map')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
       <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
     </svg>
-    <span>지도</span>
+    <span data-i18n="n.map">지도</span>
   </button>
 </nav>
 
@@ -601,11 +607,11 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <!-- 파일 읽기 실패 상세 오류 다이얼로그 -->
 <div class="err-overlay" id="err-overlay">
   <div class="err-card">
-    <div class="err-title">⚠️ 파일을 읽지 못했어요</div>
+    <div class="err-title" data-i18n="e.title">⚠️ 파일을 읽지 못했어요</div>
     <div class="err-msg" id="err-msg"></div>
     <div class="err-btns">
-      <button class="err-btn copy" onclick="copyErrDetail()">복사</button>
-      <button class="err-btn ok" onclick="closeErrDialog()">확인</button>
+      <button class="err-btn copy" data-i18n="e.copy" onclick="copyErrDetail()">복사</button>
+      <button class="err-btn ok" data-i18n="e.ok" onclick="closeErrDialog()">확인</button>
     </div>
   </div>
 </div>
@@ -884,13 +890,13 @@ function startGPS(){
       updateHUD();
       updateMyLocation(p.coords); // 지도에 내 위치 업데이트
     },
-    ()=>{document.getElementById('gps-txt').textContent='GPS 오류';const cb=document.getElementById('cap-btn');if(cb)cb.classList.remove('gps-ok');},
+    ()=>{document.getElementById('gps-txt').textContent=tr('g.err');const cb=document.getElementById('cap-btn');if(cb)cb.classList.remove('gps-ok');},
     {enableHighAccuracy:true,maximumAge:2000,timeout:15000}
   );
 }
 function updateHUD(){
   document.getElementById('hud-dot').style.background=selectedProject?selectedProject.color:'var(--dim)';
-  document.getElementById('hud-proj').textContent=selectedProject?selectedProject.name:'프로젝트 없음';
+  document.getElementById('hud-proj').textContent=selectedProject?selectedProject.name:tr('c.noproj');
   const desc=document.getElementById('desc-inp')?.value||'';
   const de=document.getElementById('hud-desc');
   if(desc){de.textContent='▸ '+desc;de.style.display='block';}else de.style.display='none';
@@ -960,7 +966,7 @@ function stopCamTracks(){
 // 카메라 획득: 후면 1080p → 후면 → 아무 카메라 순으로 완화 시도 (태블릿 호환)
 async function acquireCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
-    throw new Error('이 기기 WebView는 카메라 API(getUserMedia) 미지원 — 시스템 WebView 업데이트 필요');
+    throw new Error(tr('e.webviewcam'));
   const tries=[
     {video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false},
     {video:{facingMode:'environment'},audio:false},
@@ -968,7 +974,7 @@ async function acquireCamera(){
   ];
   let lastErr=null;
   for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c);}catch(e){lastErr=e;}}
-  throw lastErr||new Error('사용 가능한 카메라가 없어요');
+  throw lastErr||new Error(tr('c.nocam'));
 }
 
 function showCamError(msg){
@@ -1011,16 +1017,16 @@ async function startCamera(){
     document.getElementById('start-screen').style.display='none';
     document.getElementById('cam-overlay').style.display='flex';
     document.getElementById('hud-time').textContent=fmtNow();
-    toast('📷 카메라 시작됨');
+    toast(tr('c.started'));
     if(camWatchdog)clearInterval(camWatchdog);
     camWatchdog=setInterval(()=>camWatchTick(v),4000);
   }catch(e){
     camStarted=false;
     // 토스트는 3초 후 사라져 원인을 놓치므로 시작 화면에 지속 표시 (태블릿 원인 파악용)
     const reason=(e&&e.name==='NotAllowedError')
-      ?'카메라 권한이 거부됐어요.\n앱 설정 → 권한에서 카메라를 허용해주세요.'
-      :String(e&&e.message||e);
-    showCamError('📷 카메라를 시작할 수 없어요\n'+reason);
+      ?tr('c.perm'):
+      String(e&&e.message||e);
+    showCamError(tr('c.cantstart')+'\n'+reason);
   }finally{
     camStarting=false;
   }
@@ -1030,7 +1036,7 @@ function scheduleCamRecover(){
   if(camRecovering||!camStarted)return;
   if(camRecoverTries>=5){ // 반복 실패하면 자동 재시도 중단 (배터리 보호)
     camStarted=false;stopCamTracks();
-    showCamError('📷 카메라가 반복해서 멈춰요\n아래 버튼으로 다시 시작해주세요');
+    showCamError(tr('c.stuck'));
     return;
   }
   camRecovering=true;camRecoverTries++;
@@ -1041,7 +1047,7 @@ function scheduleCamRecover(){
   },2000);
 }
 
-// 프레임 감시: 트랙은 살아있는데 WebView가 프레임만 안 그리는 '얼어붙음'은 paused/readyState로 감지 불가(사용자 증상 A)
+// 프레임 감시: 트랙은 살아있는데 WebView가 that only stop drawing frames ('frozen') are paused/readyState로 감지 불가(사용자 증상 A)
 // ① requestVideoFrameCallback 지원: 마지막 프레임 시각 기준 6초 무프레임 → 재획득
 // ② 미지원(구형 WebView): 32x24 축소 캡처 픽셀 diff 0이 2회 연속 → 재획득
 let camLastFrameTs=0,camFpsSupported=false,camPrevPix=null,camStillCount=0;
@@ -1087,8 +1093,8 @@ document.addEventListener('visibilitychange',()=>{
 
 function capture(){
   const v=document.getElementById('video');
-  if(!v.srcObject){toast('카메라를 먼저 시작해주세요');return;}
-  if(!selectedProject){toast('⚠️ 프로젝트를 먼저 선택해주세요');openProjPanel();return;}
+  if(!v.srcObject){toast(tr('c.startfirst'));return;}
+  if(!selectedProject){toast(tr('c.pickfirst'));openProjPanel();return;}
   const c=document.getElementById('canvas');
   c.width=v.videoWidth;c.height=v.videoHeight;
   const ctx=c.getContext('2d');ctx.drawImage(v,0,0);
@@ -1106,7 +1112,7 @@ function capture(){
     if(gps&&meta.lat!=null)blob=await injectGpsExif(blob,gps);
     await savePhotoData(blob,meta);
     await loadAllPhotos();
-    toast(meta.lat!=null?'📸 저장됨! (GPS 포함)':'⚠️ GPS 없이 저장됨 — 지도·내보내기에서 제외돼요');
+    toast(meta.lat!=null?tr('c.savedgps'):tr('c.savednogps'));
     const btn=document.getElementById('cap-btn');
     btn.style.transform='scale(.85)';setTimeout(()=>btn.style.transform='',150);
   },'image/jpeg',0.92);
@@ -1161,23 +1167,22 @@ function goTab(id){
 function selectProject(proj){
   selectedProject=proj;closeProjPanel();
   document.getElementById('chip-dot').style.background=proj?proj.color:'var(--dim)';
-  document.getElementById('chip-label').textContent=proj?proj.name+' ▾':'프로젝트 선택 ▾';
   updateHUD();
 }
 
-function openProjPanel(){document.getElementById('proj-panel').classList.add('open');renderProjSelectList();}
-function closeProjPanel(){document.getElementById('proj-panel').classList.remove('open');}
+function openProjPanel(){document.getElementById('proj-panel').classList.add('open');backStackPush();BACK_LAYERS[1].open=1;renderProjSelectList();}
+function closeProjPanel(){document.getElementById('proj-panel').classList.remove('open');if(BACK_LAYERS[1].open){BACK_LAYERS[1].open=0;backStackTrim(1);}}
 
 async function renderProjSelectList(){
   await loadProjects();await loadAllPhotos();
   const el=document.getElementById('proj-select-list');
-  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
+  if(!projects.length){el.innerHTML='<div class="no-items">'+tr('p.empty')+'</div>';return;}
   el.innerHTML='';
   projects.forEach(p=>{
     const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
     const div=document.createElement('div');div.className='proj-item';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">📷 ${cnt}장 &nbsp;|&nbsp; 📁 내부저장소/현장캠/${p.name}/</div></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">${tr('c.count',{n:cnt})} &nbsp;|&nbsp; 📁 ${tr('s.internalpath')}/${p.name}/</div></div>
       <button class="proj-del-btn" onclick="event.stopPropagation();doDeleteProject('${p.name}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
@@ -1189,7 +1194,7 @@ async function renderProjSelectList(){
 }
 
 async function doDeleteProject(name){
-  if(!confirm(name+'\n\n이 프로젝트 폴더를 삭제할까요?\n(사진·레이어 파일 모두 삭제됩니다)'))return;
+  if(!confirm(name+tr('p.delconfirm')))return;
   const proj=projects.find(p=>p.name===name);
   if(proj)await deleteProjectData(proj);
   await loadAllPhotos();
@@ -1198,22 +1203,22 @@ async function doDeleteProject(name){
   renderProjSelectList();
   renderGalFilter();
   if(map)refreshMarkers();
-  toast('프로젝트 삭제됨');
+  toast(tr('p.deleted'));
 }
 
-function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
-function closeNewProjModal(){document.getElementById('new-proj-modal').classList.remove('show');}
+function openNewProjModal(){document.getElementById('new-proj-modal').classList.add('show');backStackPush();BACK_LAYERS[2].open=1;setTimeout(()=>document.getElementById('new-proj-inp').focus(),300);}
+function closeNewProjModal(){document.getElementById('new-proj-modal').classList.remove('show');if(BACK_LAYERS[2].open){BACK_LAYERS[2].open=0;backStackTrim(1);}}
 
 async function confirmNewProj(){
   const name=document.getElementById('new-proj-inp').value.trim();
-  if(!name){toast('이름을 입력해주세요');return;}
+  if(!name){toast(tr('m.needname'));return;}
   const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
   const proj=await createProjectData(name,color);
   closeNewProjModal();
   document.getElementById('new-proj-inp').value='';
   selectProject({name,color,...proj});
   renderSettingsLayerList(); // 새 프로젝트 지도 레이어 목록에 즉시 반영
-  toast('✅ '+name+' 추가됨');
+  toast('✅ '+name+tr('p.added'));
 }
 
 // ===== 갤러리 =====
@@ -1221,11 +1226,11 @@ let galFilter=null;    // null=전체, 그 외=프로젝트명 (사진 목록 �
 let galFilterNames=[]; // 칩 인덱스 → 이름 매핑 (프로젝트명에 특수문자가 있어도 안전)
 function renderGalFilter(){
   const el=document.getElementById('gal-filter');if(!el)return;
-  const names=[...new Set(allPhotos.map(p=>p.projectName||'미분류'))];
+  const names=[...new Set(allPhotos.map(p=>p.projectName||tr('m.unclassified')))];
   const order=projects.map(p=>p.name);
   names.sort((a,b)=>{const ai=order.indexOf(a),bi=order.indexOf(b);return (ai<0?999:ai)-(bi<0?999:bi);});
   galFilterNames=['__all__',...names];
-  let html=`<button class="gal-chip ${galFilter===null?'on':''}" onclick="setGalFilter(0)">전체</button>`;
+  let html=`<button class="gal-chip ${galFilter===null?'on':''}" onclick="setGalFilter(0)">'+tr('g.all')+'</button>`;
   html+=names.map((n,i)=>{
     const c=projects.find(p=>p.name===n)?.color||'#888';
     return `<button class="gal-chip ${galFilter===n?'on':''}" onclick="setGalFilter(${i+1})"><span class="gal-chip-dot" style="background:${c}"></span>${n.replace(/'/g,'&#39;')}</button>`;
@@ -1241,16 +1246,16 @@ function setGalFilter(i){
 async function renderGallery(){
   await loadProjects();await loadAllPhotos();
   renderGalFilter();
-  const shown=galFilter?allPhotos.filter(p=>(p.projectName||'미분류')===galFilter):allPhotos;
+  const shown=galFilter?allPhotos.filter(p=>(p.projectName||tr('m.unclassified'))===galFilter):allPhotos;
   const list=document.getElementById('gal-list');
-  document.getElementById('gal-cnt').textContent=galFilter?`${shown.length}/${allPhotos.length}장`:allPhotos.length+'장';
+  document.getElementById('gal-cnt').textContent=galFilter?`${shown.length}/${allPhotos.length}${tr('g.counter')}`:allPhotos.length+tr('g.counter');
   if(!shown.length){
     list.innerHTML=`<div class="empty">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
         <circle cx="12" cy="13" r="4"/>
       </svg>
-      <p>${galFilter?'이 프로젝트의 사진이 없어요':'아직 사진이 없어요'}</p><small>${galFilter?'위 칩으로 다른 프로젝트를 선택해주세요':'카메라 탭에서 촬영해보세요'}</small></div>`;
+      <p>${galFilter?tr('g.nofiltered'):tr('g.nophotos')}</p><small>${galFilter?tr('g.pickchip'):tr('g.tryshoot')}</small></div>`;
     return;
   }
   list.innerHTML='';
@@ -1258,12 +1263,12 @@ async function renderGallery(){
     const url=getPhotoURL(p);
     const t=fmtDt(p.time);
     const div=document.createElement('div');div.className='photo-item';
-    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):'좌표없음'}\n${t}`;
+    const meta=`${p.projectName||''}${p.description?' · '+p.description:''}\n${p.lat?p.lat.toFixed(5)+', '+p.lon.toFixed(5):tr('m.nocoord2')}\n${t}`;
     div.innerHTML=`<img class="thumb" src="${url}">
       <div class="pmeta">
-        <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||'(프로젝트 없음)'}</div>
+        <div class="pproj"><div class="pproj-dot" style="background:${p.projectColor||'var(--dim)'}"></div>${p.projectName||tr('c.noproj2')}</div>
         ${p.description?`<div class="pdesc">▸ ${p.description}</div>`:''}
-        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:'좌표 없음'}${p.alt?'\n고도 '+Math.round(p.alt)+'m':''}</div>
+        <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:tr('c.nocoord')}${p.alt?'\n'+tr('c.alt',{n:Math.round(p.alt)}):''}</div>
         <div class="ptime">${t}</div>
       </div>
       <div class="pacts"><button class="ibtn del" onclick="doDelPhoto(this)">
@@ -1278,7 +1283,7 @@ async function renderGallery(){
 async function doDelPhoto(btn){
   const idx=parseInt(btn.dataset.idx);
   const p=allPhotos[idx];if(!p)return;
-  await deletePhotoData(p);await loadAllPhotos();renderGallery();toast('삭제됨');
+  await deletePhotoData(p);await loadAllPhotos();renderGallery();toast(tr('m.deleted'));
 }
 
 // ===== 지도 =====
@@ -1291,7 +1296,7 @@ try{Object.assign(photoLayerVisible,JSON.parse(localStorage.getItem('photoLayerV
 function initMap(){
   try{
     if(map){refreshMarkers();renderSettingsLayerList();return;}
-    if(typeof L === 'undefined'){toast('지도 라이브러리 로드 중... 잠시 후 다시 탭해주세요');return;}
+    if(typeof L === 'undefined'){toast(tr('m.maploading'));return;}
     // preferCanvas: 수만 개 폴리곤/라인(지적도·관로망)도 SVG DOM 대신 canvas로 그려 WebView 멈춤 방지
     map=L.map('map',{zoomControl:false,preferCanvas:true}).setView([36.5,127.8],7);
   const savedType=localStorage.getItem('map_type')||'vworld';
@@ -1304,25 +1309,25 @@ function initMap(){
     navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],15),()=>{});
   refreshMarkers();
   loadLayersToMap();
-  }catch(e){console.error('initMap error:',e);toast('지도 초기화 실패: '+e.message);}
+  }catch(e){console.error('initMap error:',e);toast(tr('m.initfail')+e.message);}
 }
 
 function makeTileLayer(type,key){
   const cfgs={
     'vworld':{url:'https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png',opt:{attribution:'© VWorld',maxZoom:19,crossOrigin:''}},
     'esri-sat':{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opt:{attribution:'© ESRI',maxZoom:19,maxNativeZoom:18,crossOrigin:''}},
-    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:'© VWorld 위성',maxZoom:19,crossOrigin:''}},
+    'vworld-sat':{url:'https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',opt:{attribution:tr('m.vwsat'),maxZoom:19,crossOrigin:''}},
     'osm':{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opt:{attribution:'© OpenStreetMap',maxZoom:19,crossOrigin:''}},
-    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,opt:{attribution:'© VWorld 지적도',maxZoom:19,crossOrigin:''}}
+    'vworld-gray':{url:`https://api.vworld.kr/req/wmts/1.0.0/${key}/gray/{z}/{y}/{x}.png`,opt:{attribution:tr('m.vwcad'),maxZoom:19,crossOrigin:''}}
   };
   const cfg=cfgs[type]||cfgs['vworld'];
   return L.tileLayer(cfg.url,cfg.opt);
 }
 
 function setMapType(type){
-  if(!map){toast('지도 탭을 먼저 열어주세요');return;}
+  if(!map){toast(tr('m.opentabfirst'));return;}
   const key=localStorage.getItem('vworld_key')||'';
-  if(type==='vworld-gray'&&!key){toast('지적도는 VWorld API 키가 필요해요');return;}
+  if(type==='vworld-gray'&&!key){toast(tr('m.cadkeyneed'));return;}
   document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
   const btn=document.getElementById('mtype-'+type);if(btn)btn.classList.add('on');
   localStorage.setItem('map_type',type);
@@ -1342,7 +1347,7 @@ async function refreshMarkers(){
   const groups={},bounds=[];
   gpsPhotos.forEach(p=>{
     const key=p.projectName||'none';
-    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    if(!groups[key])groups[key]={name:p.projectName||tr('m.unclassified'),color:p.projectColor||'#888',photos:[]};
     groups[key].photos.push(p);
   });
   Object.entries(groups).forEach(([key,g])=>{
@@ -1355,9 +1360,9 @@ async function refreshMarkers(){
         iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-38]});
       const mk=L.marker([p.lat,p.lon],{icon})
         .bindPopup(`<img class="popup-img" src="${url}">
-          <div class="popup-title">${escHtml(p.projectName||'(프로젝트 없음)')}</div>
+          <div class="popup-title">${escHtml(tr('c.noproj2'))}</div>
           ${p.description?`<div class="popup-desc">▸ ${kmlEsc(p.description)}</div>`:''}
-          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}</div>`,
+          <div class="popup-meta">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?tr('c.alt',{n:Math.round(p.alt)}):''}</div>`,
           {maxWidth:220}).addTo(lg);
       mk.on('popupopen',e=>{const pe=e.popup.getElement();const im=pe&&pe.querySelector('.popup-img');if(im)im.onclick=()=>openLightbox(url,p.projectName||'');});
       bounds.push([p.lat,p.lon]);
@@ -1419,25 +1424,25 @@ function updateMyLocation(coords){
 async function onMapClick(e){
   const {lat,lng}=e.latlng;const ls=lat.toFixed(6),lo=lng.toFixed(6);
   const popup=L.popup({maxWidth:260}).setLatLng(e.latlng)
-    .setContent(`<div><div class="coord-title">좌표</div>
+    .setContent(`<div><div class="coord-title">${tr('m.coords')}</div>
       <div class="coord-val">${ls}, ${lo}</div>
-      <div class="coord-title">주소</div>
-      <div class="addr-val" id="paddr">🔍 검색 중...</div>
-      <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button></div>
+      <div class="coord-title">${tr('m.addr')}</div>
+      <div class="addr-val" id="paddr">🔍 ${tr('m.searching')}</div>
+      <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">${tr('m.copycoords')}</button></div>
     </div>`).openOn(map);
   try{
     const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
-    const d=await r.json();const addr=d.display_name||'주소 없음';
+    const d=await r.json();const addr=d.display_name||tr('m.noaddr');
     const el=document.getElementById('paddr');
     if(el){el.textContent=addr;
       const row=el.nextElementSibling;
-      if(row)row.innerHTML=`<button class="copy-btn" onclick="copyText('${ls}, ${lo}')">좌표 복사</button><button class="copy-btn sec" onclick="copyText(\`${addr.replace(/`/g,"'")}\`)">주소 복사</button>`;
+      if(row)row.innerHTML=`<button class="copy-btn" onclick="copyText('${ls}, ${lo}')">${tr('m.copycoords')}</button><button class="copy-btn sec" onclick="copyText(\`${addr.replace(/`/g,"'")}\`)">${tr('m.copyaddr')}</button>`;
     }
-  }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent='주소 검색 실패';}
+  }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent=tr('m.addrfail');}
 }
 function copyText(t){
-  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast('📋 복사됨!'));
-  else{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('📋 복사됨!');}
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast(tr('m.copied')));
+  else{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast(tr('m.copied'));}
 }
 
 // ===== 레이어 =====
@@ -1513,14 +1518,14 @@ async function toggleLayer(idx){
 
 async function deleteLayer(idx){
   const l=allLayers[idx];if(!l)return;
-  if(!confirm(l.name+'\n\n이 레이어를 삭제할까요?\n복구가 필요하면 설정 → 삭제한 파일 목록에서 할 수 있어요'))return;
+  if(!confirm(l.name+tr('l.delconfirm')))return;
   const key=l.geojsonPath||l.id;
   if(leafletLayers[key]){map.removeLayer(leafletLayers[key]);delete leafletLayers[key];}
   // 스캔 블랙리스트에 등록 (폴더 재스캔 시 부활 방지)
   // srcFile: 이 레이어를 만든 원본 파일(.kmz/.kml/.shp 기본이름) → 원본 단위로 차단
-  addScanBlacklist(l.projectName||l.project||'미분류', l.srcFile||l.name);
+  addScanBlacklist(l.projectName||l.project||tr('m.unclassified'), l.srcFile||l.name);
   await deleteLayerData(l);
-  renderSettingsLayerList();toast('레이어 삭제됨 (재스캔 시 제외됨)');
+  renderSettingsLayerList();toast(tr('l.deleted'));
 }
 
 // 레이어 색상 변경
@@ -1562,7 +1567,7 @@ function zoomToLayer(idx){
 // ===== 설정 패널 =====
 async function openSettings(){
   document.getElementById('settings-overlay').classList.add('show');
-  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-panel').classList.add('open');backStackPush();BACK_LAYERS[0].open=1;
   if(IS_APK){
     const p=AndroidBridge.getBasePath();
     basePath=p;
@@ -1571,12 +1576,13 @@ async function openSettings(){
   const key=localStorage.getItem('vworld_key')||'';
   if(key){
     document.getElementById('vworld-key-inp').value=key;
-    document.getElementById('vworld-key-status').textContent='✅ API 키 저장됨';
+    document.getElementById('vworld-key-status').textContent=tr('s.keysaved');
     document.getElementById('vworld-key-status').style.color='var(--gps)';
   }
   const cur=localStorage.getItem('map_type')||'vworld';
   document.querySelectorAll('.map-type-btn').forEach(b=>b.classList.remove('on'));
   const curBtn=document.getElementById('mtype-'+cur);if(curBtn)curBtn.classList.add('on');
+  const lk=(localStorage.getItem('app_lang')||'en');var lbk=document.getElementById('lang-ko'),lbe=document.getElementById('lang-en');if(lbk)lbk.classList.toggle('on',lk==='ko');if(lbe)lbe.classList.toggle('on',lk!=='ko');
   await loadProjects();await loadAllPhotos();
   // allLayers는 메모리 유지 (순서 보존) - 처음 로드할 때만 읽음
   if(!allLayers.length) await loadAllLayers();
@@ -1586,15 +1592,15 @@ async function openSettings(){
 }
 function closeSettings(){
   document.getElementById('settings-overlay').classList.remove('show');
-  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-panel').classList.remove('open');if(BACK_LAYERS[0].open){BACK_LAYERS[0].open=0;backStackTrim(1);}
 }
 function saveVWorldKey(){
   const key=document.getElementById('vworld-key-inp').value.trim();
-  if(!key){toast('API 키를 입력해주세요');return;}
+  if(!key){toast(tr('s.keyenter'));return;}
   localStorage.setItem('vworld_key',key);
-  document.getElementById('vworld-key-status').textContent='✅ 저장됨';
+  document.getElementById('vworld-key-status').textContent=tr('s.savedok');
   document.getElementById('vworld-key-status').style.color='var(--gps)';
-  toast('API 키 저장됨');
+  toast(tr('s.keysaved2'));
 }
 
 // ===== 설정 내 레이어 목록 =====
@@ -1605,11 +1611,11 @@ function renderSettingsLayerList(){
 
   // 프로젝트 목록 수집: 사진은 GPS 유무 관계없이 allPhotos 기준 + 레이어 통합
   const projSet=new Set();
-  allPhotos.forEach(p=>projSet.add(p.projectName||'미분류')); // GPS 없는 사진도 포함
-  allLayers.forEach(l=>projSet.add(l.projectName||l.project||'미분류'));
+  allPhotos.forEach(p=>projSet.add(p.projectName||tr('m.unclassified'))); // GPS 없는 사진도 포함
+  allLayers.forEach(l=>projSet.add(l.projectName||l.project||tr('m.unclassified')));
 
   // projects DB 순서대로 정렬
-  const projOrder=[...projects.map(p=>p.name),'미분류'];
+  const projOrder=[...projects.map(p=>p.name),tr('m.unclassified')];
   const sortedProjs=[...projSet].sort((a,b)=>{
     const ai=projOrder.indexOf(a),bi=projOrder.indexOf(b);
     return (ai<0?999:ai)-(bi<0?999:bi);
@@ -1617,14 +1623,14 @@ function renderSettingsLayerList(){
 
   sortedProjs.forEach(proj=>{
     // 사진 행: 전체 사진 수 표시 (GPS 있는 것만 지도에 찍히지만 목록엔 전체)
-    const projPhotos=allPhotos.filter(p=>(p.projectName||'미분류')===proj);
-    const projGpsPhotos=gpsPhotos.filter(p=>(p.projectName||'미분류')===proj);
-    const photoKey=proj==='미분류'?'none':proj;
+    const projPhotos=allPhotos.filter(p=>(p.projectName||tr('m.unclassified'))===proj);
+    const projGpsPhotos=gpsPhotos.filter(p=>(p.projectName||tr('m.unclassified'))===proj);
+    const photoKey=proj===tr('m.unclassified')?'none':proj;
     const photoOn=photoLayerVisible[photoKey]!==false;
 
     // 이 프로젝트의 레이어
     const projLayers=allLayers.map((l,idx)=>({l,idx}))
-      .filter(({l})=>(l.projectName||l.project||'미분류')===proj);
+      .filter(({l})=>(l.projectName||l.project||tr('m.unclassified'))===proj);
 
     if(!projPhotos.length&&!projLayers.length)return;
 
@@ -1639,7 +1645,7 @@ function renderSettingsLayerList(){
         <span class="layer-proj-name">${proj}</span>
         <span class="layer-proj-arrow" style="transform:rotate(${isCollapsed?'-90':'0'}deg)">▾</span>
       </div>
-      <button class="layer-proj-toggle" onclick="event.stopPropagation();toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?'전체 끄기':'전체 켜기'}</button>
+      <button class="layer-proj-toggle" onclick="event.stopPropagation();toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?tr('l.alloff'):tr('l.allon')}</button>
     </div>
     <div class="layer-proj-body${isCollapsed?' collapsed':''}">`;
 
@@ -1647,7 +1653,7 @@ function renderSettingsLayerList(){
     if(projPhotos.length>0){
       html+=`<div class="layer-item" style="padding-left:8px">
         <div style="font-size:16px;flex-shrink:0">📸</div>
-        <div class="layer-info"><div class="layer-name">사진</div><div class="layer-sub">${projPhotos.length}장 (GPS ${projGpsPhotos.length}장)</div></div>
+        <div class="layer-info"><div class="layer-name">${tr('l.photos')}</div><div class="layer-sub">${tr('l.photoof',{n:projPhotos.length})} (${tr('l.gpsof',{n:projGpsPhotos.length})})</div></div>
         <button class="toggle-btn ${photoOn?'on':'off'}" onclick="togglePhotoLayer('${photoKey}')"></button>
       </div>`;
     }
@@ -1670,7 +1676,7 @@ function renderSettingsLayerList(){
           ontouchmove="layerTouchMove(event)"
           ontouchend="layerTouchEnd(event)"
           ontouchcancel="layerTouchCancel(event)"
-          title="길게 눌러 이동">⠿</div>
+          title="${tr('l.holdmove')}">⠿</div>
         <div style="flex-shrink:0">${makeSymbolHtml(l.color,sym,20)}</div>
         <div class="layer-info"><div class="layer-name">${l.name}</div></div>
         <button class="mfab" style="width:28px;height:28px;border-radius:7px;font-size:13px" onclick="event.stopPropagation();zoomToLayer(${idx})">🔍</button>
@@ -1691,7 +1697,7 @@ function renderSettingsLayerList(){
   });
 
   if(!allPhotos.length&&!allLayers.length)
-    html='<div style="font-size:12px;color:var(--dim);padding:8px 0">레이어 없음</div>';
+    html='<div style="font-size:12px;color:var(--dim);padding:8px 0">'+tr('l.none')+'</div>';
   el.innerHTML=html;
   updateBlCount();
 }
@@ -1858,7 +1864,7 @@ async function layerTouchEnd(e){
   persistAllLayerMeta();
   reapplyLayerOrder();
   renderSettingsLayerList();
-  toast('↕ 레이어 순서 변경됨');
+  toast(tr('l.reordered'));
 }
 
 // 모든 레이어 메타를 저장소에 반영 (APK: meta.json / 웹: IndexedDB)
@@ -1887,7 +1893,7 @@ function layerTouchCancel(){
 // 프로젝트 사진 + 레이어 전체 토글
 async function toggleProjectAll(projEncoded,visible){
   const proj=decodeURIComponent(projEncoded);
-  const photoKey=proj==='미분류'?'none':proj;
+  const photoKey=proj===tr('m.unclassified')?'none':proj;
   // 사진 토글
   photoLayerVisible[photoKey]=visible;
   savePhotoLayerVisible();
@@ -1900,7 +1906,7 @@ async function toggleProjectAll(projEncoded,visible){
 // ===== 레이어 순서 이동 (확장 패널 ▲▼ 버튼) =====
 async function moveLayer(idx,dir){
   if(idx<0||idx>=allLayers.length)return;
-  const projOf=l=>l.projectName||l.project||'미분류';
+  const projOf=l=>l.projectName||l.project||tr('m.unclassified');
   const proj=projOf(allLayers[idx]);
   // 같은 프로젝트의 이웃 레이어를 찾아 스왑 (목록에 보이는 순서와 일치)
   let j=idx+dir;
@@ -1946,7 +1952,7 @@ function reapplyLayerOrder(){
 async function toggleProjectLayers(projEncoded,visible){
   const proj=decodeURIComponent(projEncoded);
   for(const l of allLayers){
-    if((l.projectName||l.project||'미분류')!==proj)continue;
+    if((l.projectName||l.project||tr('m.unclassified'))!==proj)continue;
     l.visible=visible;
     if(IS_APK&&l.geojsonPath){
       AndroidBridge.updateLayerMeta(l.geojsonPath,buildLayerMeta(l));
@@ -2013,7 +2019,7 @@ function ensureWgs84(geojson){
       const p=proj4(src,proj4('EPSG:4326'),[fc[0],fc[1]]);
       if(Number.isFinite(p[0])&&p[0]>=123&&p[0]<=132&&p[1]>=32.5&&p[1]<=38.8){
         const out=applyShpXform(geojson,src);
-        if(out.__ok>0){toast('ℹ️ 좌표계 미지정 파일 - '+code+' 추정 변환');return{...geojson,features:out.features};}
+        if(out.__ok>0){toast(tr('m.csguess',{c:code}));return{...geojson,features:out.features};}
       }
     }catch(e){}
   }
@@ -2070,10 +2076,10 @@ function fixShpCoords(geojson,prjBuf){
       return{...g,coordinates:xc(g.coordinates)};
     };
     const out={...geojson,features:geojson.features.map(f=>({...f,geometry:xg(f.geometry)}))};
-    if(okCnt>0)toast('✅ 한국 좌표계 변환 완료 ('+okCnt+'/'+(total||okCnt)+'점)');
-    else console.warn('좌표변환: 유효 변환 없음 - 원본 유지');
+    if(okCnt>0)toast(tr('m.crsdone',{a:okCnt,b:(total||okCnt)}));
+    else console.warn('CRS: no valid transform, keeping original');
     return out;
-  }catch(e){console.error('좌표변환실패',e);return geojson;}
+  }catch(e){console.error('CRS transform failed',e);return geojson;}
 }
 
 function b64ToArrayBuffer(b64){
@@ -2086,8 +2092,8 @@ function b64ToArrayBuffer(b64){
 
 // 수동 스캔 (버튼 눌렀을 때만)
 async function manualScanFolders(){
-  if(!IS_APK){toast('APK에서만 사용 가능해요');return;}
-  toast('폴더 스캔 중...');
+  if(!IS_APK){toast(tr('s.apkonly'));return;}
+  toast(tr('s.scanning'));
   await loadProjects();
   let total=0;
   const stats={bl:[],fail:[]};
@@ -2103,9 +2109,9 @@ async function manualScanFolders(){
   });
   reapplyLayerOrder();
   renderSettingsLayerList();
-  let msg=total>0?`✅ ${total}개 새 파일 읽었어요`:'새 파일 없음 (이미 읽었거나 파일 없음)';
-  if(stats.bl.length)msg+=`\n🚫 삭제이력 제외 ${stats.bl.length}개 — 설정 → 삭제한 파일 목록에서 복구 가능`;
-  if(stats.fail.length)msg+=`\n❌ 실패 ${stats.fail.length}개: ${stats.fail.slice(0,2).join(', ')}${stats.fail.length>2?' 외':''}`;
+  let msg=total>0?tr('s.scanned',{n:total}):tr('s.nonew');
+  if(stats.bl.length)msg+='\n🚫 '+tr('s.exbl',{n:stats.bl.length});
+  if(stats.fail.length)msg+='\n❌ '+tr('s.failed',{n:stats.fail.length,list:stats.fail.slice(0,2).join(', '),more:stats.fail.length>2?tr('s.more'):''});
   toast(msg);
 }
 
@@ -2147,7 +2153,7 @@ async function scanProjectLayers(projName,scanStats){
           if(files.cpg){
             try{const cpg=normalizeCpgLabel(AndroidBridge.readText(files.cpg));if(cpg)obj.cpg=cpg;}catch(e2){}
           }
-          if(!files.prj)toast(`⚠️ ${name}: .prj 없음 - 좌표계 미지정 시 위치가 틀릴 수 있어요`);
+          if(!files.prj)toast(tr('s.noprj',{n:name}));
           geojson=await shp(obj);
           // prj 있어도 shpjs가 WKT를 못 읽는 경우 대비 + prj 없으면 한국 TM 추정 변환 안전망
           geojson=files.prj?fixShpCoords(geojson,files.prj?b64ToArrayBuffer(AndroidBridge.readFileAsBase64(files.prj)):null):ensureWgs84(geojson);
@@ -2199,12 +2205,12 @@ async function scanProjectLayers(projName,scanStats){
           const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
           await saveLayerData(projName,name,geojson,color,true,'circle',name);
           added++;
-          toast(`📂 ${name} 읽는 중...`);
+          toast(tr('s.reading',{n:name}));
         }
-      }catch(e){console.error('파일 처리 실패:',name,e);if(scanStats)scanStats.fail.push(name+': '+(e&&e.message||'파싱 실패'));}
+      }catch(e){console.error('File processing failed:',name,e);if(scanStats)scanStats.fail.push(name+': '+(e&&e.message||'parse failed'));}
     }
     return added;
-  }catch(e){console.error('스캔 실패:',projName,e);return 0;}
+  }catch(e){console.error('Scan failed:',projName,e);return 0;}
 }
 // .cpg 인코딩 라벨 정규화 — 브라우저 TextDecoder는 'cp949' 라벨 미지원
 // ('euc-kr' 라벨이 인코딩 표준상 CP949 전체(한글 11,172자)를 해석함)
@@ -2243,7 +2249,7 @@ async function onFileSelected(e){
     // cpg 없고 DBF가 CP949로 판명되면 euc-kr 지정 (UTF-8이면 기본값 유지 - 자동판별)
     if(!cpgLbl&&dbfBuf&&looksLikeCp949(dbfBuf)){
       cpgLbl='euc-kr';
-      toast('한글 인코딩 CP949 감지');
+      toast(tr('s.cp949'));
     }
     // 파일명 기반 매칭: 여러 세트를 같이 골라도 관로.shp+관로.dbf가 서로 엮이지 않게 base명 비교
     const shpBase=name.toLowerCase();
@@ -2264,37 +2270,37 @@ async function onFileSelected(e){
 }
 
 async function openLayerProjPanel(){
-  document.getElementById('layer-proj-panel').classList.add('open');
+  document.getElementById('layer-proj-panel').classList.add('open');backStackPush();BACK_LAYERS[3].open=1;
   await renderLayerProjList();
 }
-function cancelLayerProj(){pendingFile=null;document.getElementById('layer-proj-panel').classList.remove('open');}
+function cancelLayerProj(){pendingFile=null;document.getElementById('layer-proj-panel').classList.remove('open');if(BACK_LAYERS[3].open){BACK_LAYERS[3].open=0;backStackTrim(1);}}
 
 async function renderLayerProjList(){
   await loadProjects();await loadAllLayers();
   const el=document.getElementById('layer-proj-list');
-  if(!projects.length){el.innerHTML='<div class="no-items">아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요</div>';return;}
+  if(!projects.length){el.innerHTML='<div class="no-items">'+tr('p.empty')+'</div>';return;}
   el.innerHTML='';
   projects.forEach(p=>{
     const lc=allLayers.filter(l=>(l.projectName||l.project)===p.name).length;
     const div=document.createElement('div');div.className='proj-item';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
-      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">레이어 ${lc}개</div></div>
+      <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">${tr('l.count',{n:lc})}</div></div>
       <div style="font-size:18px;color:var(--dim)">›</div>`;
     div.onclick=()=>selectLayerProject(p.name);el.appendChild(div);
   });
 }
 
 async function selectLayerProject(projName){
-  document.getElementById('layer-proj-panel').classList.remove('open');
+  document.getElementById('layer-proj-panel').classList.remove('open');if(hbDepth>0){hbDepth--;backStackTrim(1);}
   if(!pendingFile)return;
   await loadLayerFile(pendingFile,projName);pendingFile=null;
 }
 
-function openNewProjFromLayer(){document.getElementById('layer-new-proj-modal').classList.add('show');setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);}
-function closeLayerNewProj(){document.getElementById('layer-new-proj-modal').classList.remove('show');}
+function openNewProjFromLayer(){document.getElementById('layer-new-proj-modal').classList.add('show');backStackPush();BACK_LAYERS[4].open=1;setTimeout(()=>document.getElementById('layer-new-proj-inp').focus(),300);}
+function closeLayerNewProj(){document.getElementById('layer-new-proj-modal').classList.remove('show');if(BACK_LAYERS[4].open){BACK_LAYERS[4].open=0;backStackTrim(1);}}
 async function confirmLayerNewProj(){
   const name=document.getElementById('layer-new-proj-inp').value.trim();
-  if(!name){toast('이름을 입력해주세요');return;}
+  if(!name){toast(tr('m.needname'));return;}
   const color=PROJ_COLORS[projects.length%PROJ_COLORS.length];
   await createProjectData(name,color);
   document.getElementById('layer-new-proj-inp').value='';
@@ -2303,7 +2309,7 @@ async function confirmLayerNewProj(){
 }
 
 async function loadLayerFile(file,projectName){
-  toast('파일 불러오는 중...');
+  toast(tr('s.fileloading'));
   try{
     let geojson,displayName,multiLayers=null;
     if(file._shpMulti){
@@ -2311,7 +2317,7 @@ async function loadLayerFile(file,projectName){
       const shpObj={shp:file.shpBuf};
       if(file.dbfBuf)shpObj.dbf=file.dbfBuf;
       if(file.prjBuf)shpObj.prj=file.prjBuf;
-      else toast('⚠️ .prj 없음 - 좌표계를 몰라 위치가 틀릴 수 있어요');
+      else toast(tr('s.noprj'));
       if(file.cpgLbl)shpObj.cpg=file.cpgLbl;
       geojson=await shp(shpObj);
       if(file.prjBuf)geojson=fixShpCoords(geojson,file.prjBuf);
@@ -2320,7 +2326,7 @@ async function loadLayerFile(file,projectName){
       displayName=file.name.replace(/\.kmz$/i,'');
       const zip=await JSZip.loadAsync(await file.arrayBuffer());
       const kmlF=zip.file('doc.kml')||Object.values(zip.files).find(f=>f.name.endsWith('.kml'));
-      if(!kmlF){toast('KMZ 안에 KML이 없어요');return;}
+      if(!kmlF){toast(tr('s.nokml'));return;}
       multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await kmlF.async('string'),'text/xml'),displayName);
     }else if(file.name.endsWith('.zip')){
       displayName=file.name.replace(/\.zip$/i,'');geojson=ensureWgs84(await shp(await file.arrayBuffer()));
@@ -2329,7 +2335,7 @@ async function loadLayerFile(file,projectName){
     }else if(file.name.endsWith('.kml')){
       displayName=file.name.replace(/\.kml$/i,'');
       multiLayers=kmlToMultiGeoJSON(new DOMParser().parseFromString(await file.text(),'text/xml'),displayName);
-    }else{toast('지원하지 않는 파일 형식');return;}
+    }else{toast(tr('s.badtype'));return;}
 
     // 멀티레이어 처리 (KML/KMZ 폴더별)
     if(multiLayers&&multiLayers.length>0){
@@ -2348,7 +2354,7 @@ async function loadLayerFile(file,projectName){
       saveLayerOrder();
       reapplyLayerOrder(); // 새 레이어들을 목록 순서대로 지도에 반영
       renderSettingsLayerList();
-      const msg=added>1?`✅ ${added}개 레이어 추가됨 (${displayName})`:'✅ '+(multiLayers[0]?.name||displayName)+' 추가됨';
+      const msg=added>1?tr('s.layersadded',{n:added,name:displayName}):tr('s.layeradded',{name:(multiLayers[0]?.name||displayName)});
       toast(msg);
       return;
     }
@@ -2363,10 +2369,10 @@ async function loadLayerFile(file,projectName){
     saveLayerOrder();
     reapplyLayerOrder(); // 새 레이어를 목록 순서(맨 아래)에 맞게 재배치
     try{const lf=leafletLayers[newLayer?.geojsonPath||newLayer?.id];if(lf){const b=lf.getBounds();if(b.isValid())map?.fitBounds(b,{padding:[40,40]});}}catch(e2){}
-    renderSettingsLayerList();toast('✅ '+name+' 추가됨');
+    renderSettingsLayerList();toast('✅ '+name+tr('p.added'));
   }catch(err){
     console.error(err);
-    showErrDialog(err, '파일: '+((file&&file.name)||'?')+' / 프로젝트: '+projectName);
+    showErrDialog(err, tr('x.file')+' '+((file&&file.name)||'?')+tr('x.fileproj')+projectName);
   }
 }
 
@@ -2375,14 +2381,14 @@ let lastErrDetail='';
 function showErrDialog(err,ctx){
   lastErrDetail=(ctx||'')+'\n'+(err&&(err.stack||err.message)||String(err));
   document.getElementById('err-msg').textContent=lastErrDetail;
-  document.getElementById('err-overlay').style.display='flex';
+  document.getElementById('err-overlay').style.display='flex';backStackPush();BACK_LAYERS[6].open=1;
 }
-function closeErrDialog(){document.getElementById('err-overlay').style.display='none';}
+function closeErrDialog(){document.getElementById('err-overlay').style.display='none';if(BACK_LAYERS[6].open){BACK_LAYERS[6].open=0;backStackTrim(1);}}
 function copyErrDetail(){
   const t=document.getElementById('err-msg').textContent;
   if(navigator.clipboard&&navigator.clipboard.writeText)
-    navigator.clipboard.writeText(t).then(()=>toast('복사됨'),()=>toast('복사 실패'));
-  else toast('이 기기에서는 복사 미지원');
+    navigator.clipboard.writeText(t).then(()=>toast(tr('m.copied3')),()=>toast(tr('m.copyfail')));
+  else toast(tr('m.nocopy'));
 }
 
 // ===== 블랙리스트 관리 =====
@@ -2403,20 +2409,20 @@ function openBlacklistManager(){
   const blBtn=document.querySelector('[onclick="openBlacklistManager()"]');
   if(blBtn)blBtn.style.display='none';
   let html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-    '<div style="font-size:13px;font-weight:700">🚫 삭제한 파일 목록 ('+list.length+'개)</div>'+
+    '<div style="font-size:13px;font-weight:700">🚫 '+tr('s.bllist',{n:list.length})+'</div>'+
     '<button class="bl-restore-btn" style="color:var(--danger);border-color:rgba(255,68,68,.4);background:rgba(255,68,68,.08)" '+
-    'onclick="blClearAll('+list.length+')">전체 삭제</button></div>';
+    'onclick="blClearAll('+list.length+')">'+tr('s.delall')+'</button></div>';
   if(!list.length)
-    html+='<div style="font-size:12px;color:var(--dim);padding:8px 0">삭제 이력이 없어요</div>';
+    html+='<div style="font-size:12px;color:var(--dim);padding:8px 0">'+tr('s.nohistory')+'</div>';
   list.forEach((e,i)=>{
     const attr=encodeURIComponent(e.proj)+"','";
     const nmA=encodeURIComponent(e.name);
     html+='<div class="layer-item" style="padding-left:4px">'+
       '<div class="layer-info"><div class="layer-name" style="font-size:13px">'+e.name.replace(/'/g,'&#39;')+'</div>'+
       '<div class="layer-sub">📁 '+e.proj.replace(/'/g,'&#39;')+'</div></div>'+
-      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">🔄 복구</button></div>';
+      '<button class="bl-restore-btn" onclick="blRemoveOne(\''+attr+nmA+'\')">'+tr('s.restore')+'</button></div>';
   });
-  html+='<button class="add-btn-outline" style="width:100%;margin-top:8px" onclick="closeBlacklistManager()">← 레이어 목록으로</button>';
+  html+='<button class="add-btn-outline" style="width:100%;margin-top:8px" onclick="closeBlacklistManager()">'+tr('s.backtolayers')+'</button>';
   el.innerHTML=html;
 }
 function closeBlacklistManager(){
@@ -2432,7 +2438,7 @@ async function blRemoveOne(pjEnc,nmEnc){
   Object.keys(bl).forEach(p=>{(bl[p]||[]).forEach(n=>{
     if(blNorm(n)===blNorm(nm)||blNorm(n)===blNorm(pj))removeScanBlacklist(p,n);
   });});
-  toast('복구 중... (폴더 다시 읽는 중)');
+  toast(tr('s.restoring1'));
   const added=await scanProjectLayers(pj,{bl:[],fail:[]});
   if(added>0){
     await loadAllLayers();
@@ -2444,12 +2450,12 @@ async function blRemoveOne(pjEnc,nmEnc){
   }
   renderSettingsLayerList();
   updateBlCount();
-  toast(added>0?`✅ 복구됨: ${nm} (${added}개 레이어)`:'해제됨 — 기기에 해당 파일이 없어요 (USB로 넣은 뒤 폴더 읽기)');
+  toast(added>0?tr('s.restored',{name:nm,n:added}):tr('s.notfound'));
 }
 async function blClearAll(n){
-  if(n>0&&!confirm('삭제 이력을 전부 지울까요?\n지금 바로 폴더를 다시 읽어 복구합니다.'))return;
+  if(n>0&&!confirm(tr('s.delhistconfirm')))return;
   localStorage.removeItem('scanBL');
-  toast('복구 중... (전체 폴더 다시 읽는 중)');
+  toast(tr('s.restoring2'));
   let total=0;
   await loadProjects();
   for(const p of projects){total+=await scanProjectLayers(p.name,{bl:[],fail:[]});}
@@ -2463,13 +2469,13 @@ async function blClearAll(n){
   }
   renderSettingsLayerList();
   updateBlCount();
-  toast(total>0?`✅ ${total}개 레이어 복구됨`:'해제됨 — 기기에 파일이 없어요');
+  toast(total>0?tr('s.restoredn',{n:total}):tr('s.notondevice'));
 }
 
 async function loadFromURL(){
   const url=document.getElementById('layer-url-inp').value.trim();
-  if(!url){toast('URL을 입력해주세요');return;}
-  toast('URL 불러오는 중...');
+  if(!url){toast(tr('s.urlneed'));return;}
+  toast(tr('s.urlloading'));
   try{
     let filename=url.split('/').pop().split('?')[0]||'layer';
     let file;
@@ -2511,9 +2517,9 @@ async function loadFromURL(){
     document.getElementById('layer-panel-fname').textContent='🔗 '+filename;
     pendingFile=file;
     await renderLayerProjList();
-    document.getElementById('layer-proj-panel').classList.add('open');
+    document.getElementById('layer-proj-panel').classList.add('open');backStackPush();BACK_LAYERS[3].open=1;
 
-  }catch(err){toast('URL 불러오기 실패: '+err.message);console.error(err);}
+  }catch(err){toast(tr('s.urlfail')+err.message);console.error(err);}
 }
 
 function parsePlacemarks(pms){
@@ -2575,15 +2581,16 @@ function kmlToMultiGeoJSON(kml,baseName){
 
 // ===== 내보내기 (설정 내) =====
 function renderExportInSettings(){
+  var I18N_EXPORT_ALL='전체';
   const el=document.getElementById('settings-exp-list');if(!el)return;
   let html='';
   const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon);
-  if(!gpsPhotos.length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:0 0 10px">GPS 사진이 없어요</div>';return;}
+  if(!gpsPhotos.length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:0 0 10px">'+tr('e.nogps')+'</div>';return;}
 
   const groups={};
   gpsPhotos.forEach(p=>{
     const key=p.projectName||'none';
-    if(!groups[key])groups[key]={name:p.projectName||'미분류',color:p.projectColor||'#888',photos:[]};
+    if(!groups[key])groups[key]={name:p.projectName||tr('m.unclassified'),color:p.projectColor||'#888',photos:[]};
     groups[key].photos.push(p);
   });
 
@@ -2592,12 +2599,12 @@ function renderExportInSettings(){
     html+=`<div class="exp-card">
       <div class="exp-card-hdr">
         <div class="exp-proj-dot" style="background:${g.color}"></div>
-        <div class="exp-proj-info"><div class="exp-proj-name">${g.name}</div><div class="exp-proj-stat">📷 ${g.photos.length}장 · GPS ${g.photos.length}장</div></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">${g.name}</div><div class="exp-proj-stat">📷 ${tr('c.count',{n:g.photos.length})} · ${tr('l.gpsof',{n:g.photos.length})}</div></div>
       </div>
       <div class="exp-fmt-row">
-        <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${safe}')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
-        <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${safe}')"><span>📄</span><span>KML</span><small>핀만</small></button>
-        <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${safe}')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('${key}','kmz','${safe}')"><span>📦</span><span>KMZ</span><small>${tr('e.pinsphotos')}</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('${key}','kml','${safe}')"><span>📄</span><span>KML</span><small>${tr('e.pinsonly')}</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('${key}','geojson','${safe}')"><span>🗺️</span><span>GeoJSON</span><small>${tr('e.qgis')}</small></button>
       </div>
     </div>`;
   });
@@ -2606,12 +2613,12 @@ function renderExportInSettings(){
     html+=`<div class="exp-card exp-all-card">
       <div class="exp-card-hdr">
         <div class="exp-proj-dot" style="background:var(--dim)"></div>
-        <div class="exp-proj-info"><div class="exp-proj-name">전체 내보내기</div><div class="exp-proj-stat">📷 ${gpsPhotos.length}장</div></div>
+        <div class="exp-proj-info"><div class="exp-proj-name">${tr('e.expall')}</div><div class="exp-proj-stat">📷 ${gpsPhotos.length}장</div></div>
       </div>
       <div class="exp-fmt-row">
-        <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz','전체')"><span>📦</span><span>KMZ</span><small>핀+사진</small></button>
-        <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml','전체')"><span>📄</span><span>KML</span><small>핀만</small></button>
-        <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson','전체')"><span>🗺️</span><span>GeoJSON</span><small>QGIS용</small></button>
+        <button class="exp-fmt-btn kmz" onclick="exportByProject('all','kmz',I18N_EXPORT_ALL)"><span>📦</span><span>KMZ</span><small>${tr('e.pinsphotos')}</small></button>
+        <button class="exp-fmt-btn kml" onclick="exportByProject('all','kml',I18N_EXPORT_ALL)"><span>📄</span><span>KML</span><small>${tr('e.pinsonly')}</small></button>
+        <button class="exp-fmt-btn geo" onclick="exportByProject('all','geojson',I18N_EXPORT_ALL)"><span>🗺️</span><span>GeoJSON</span><small>${tr('e.qgis')}</small></button>
       </div>
     </div>`;
   }
@@ -2623,13 +2630,13 @@ async function exportByProject(key,format,nameSlug){
   const list=key==='all'?allPhotos.filter(p=>p.lat&&p.lon):
     key==='none'?allPhotos.filter(p=>(!p.projectName)&&p.lat&&p.lon):
     allPhotos.filter(p=>p.projectName===key&&p.lat&&p.lon);
-  if(!list.length){toast('GPS 사진이 없어요');return;}
-  toast('생성 중...');
+  if(!list.length){toast(tr('e.nogps'));return;}
+  toast(tr('e.creating'));
   try{
     if(format==='kmz')await doKMZ(list,slug);
     else if(format==='kml')doKML(list,slug);
     else doGeoJSON(list,slug);
-  }catch(e){toast('내보내기 실패: '+e.message);}
+  }catch(e){toast(tr('e.expfail')+e.message);}
 }
 
 async function doKMZ(list,slug){
@@ -2643,9 +2650,9 @@ async function doKMZ(list,slug){
       blob=await res.blob();
     }else{blob=p.blob;}
     imgs.file(fn,await blob.arrayBuffer());
-    marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name>
+    marks+=`<Placemark><name>${kmlEsc(p.projectName||tr('e.photon',{n:i+1}))}</name>
     <description><![CDATA[<img src="files/${fn}" width="300"><br>
-    <b>${kmlEsc(p.projectName||'')}</b><br>${p.description?'▸ '+kmlEsc(p.description)+'<br>':''}${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?'<br>고도 '+Math.round(p.alt)+'m':''}]]></description>
+    <b>${kmlEsc(p.projectName||'')}</b><br>${p.description?'▸ '+kmlEsc(p.description)+'<br>':''}${fmtDt(p.time)}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}${p.alt?tr('c.alt',{n:Math.round(p.alt)}):''}]]></description>
     <TimeStamp><when>${new Date(p.time).toISOString()}</when></TimeStamp>
     <Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;
   }
@@ -2656,7 +2663,7 @@ function kmlEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function doKML(list,slug){
   let marks='';
-  list.forEach((p,i)=>{marks+=`<Placemark><name>${kmlEsc(p.projectName||'사진 '+(i+1))}</name><description>${kmlEsc(p.description)} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
+  list.forEach((p,i)=>{marks+=`<Placemark><name>${kmlEsc(p.projectName||tr('e.photon',{n:i+1}))}</name><description>${kmlEsc(p.description)} ${fmtDt(p.time)}</description><Point><coordinates>${p.lon},${p.lat},${p.alt||0}</coordinates></Point></Placemark>`;});
   saveFile(new Blob([`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${slug}</name>${marks}</Document></kml>`],{type:'application/vnd.google-earth.kml+xml'}),`${slug}_${dateStr()}.kml`,'application/vnd.google-earth.kml+xml');
 }
 function doGeoJSON(list,slug){
@@ -2721,10 +2728,10 @@ function buildGpsExif(lat,lon,alt){
 function u16be(v){const b=new Uint8Array(2);b[0]=(v>>8)&255;b[1]=v&255;return b;}
 
 function injectGpsExifBytes(jpegBytes,lat,lon,alt){
-  if(jpegBytes[0]!==0xFF||jpegBytes[1]!==0xD8)throw new Error('JPEG 아님');
+  if(jpegBytes[0]!==0xFF||jpegBytes[1]!==0xD8)throw new Error(tr('x.notjpeg'));
   let off=2, app1=null;
   while(off<jpegBytes.length-1){
-    if(jpegBytes[off]!==0xFF){throw new Error('마커 정렬 깨짐@'+off);}
+    if(jpegBytes[off]!==0xFF){throw new Error(tr('x.markerbad')+off);}
     const marker=jpegBytes[off+1];
     if(marker===0xDA||marker===0xD9)break;
     const len=(jpegBytes[off+2]<<8)|jpegBytes[off+3];
@@ -2751,7 +2758,7 @@ async function injectGpsExif(blob,gps){
     const out=injectGpsExifBytes(bytes,gps.latitude,gps.longitude,gps.altitude==null?null:gps.altitude);
     const res=await fetch('data:image/jpeg;base64,'+b64FromBytes(out));
     return await res.blob();
-  }catch(e){console.error('EXIF 주입 실패(원본으로 저장):',e);return blob;}
+  }catch(e){console.error('EXIF inject failed:',e);return blob;}
 }
 
 function saveFile(blob,filename,mimeType){
@@ -2773,10 +2780,10 @@ async function onImportKMZ(e){
   const bar=document.getElementById('import-bar');
   const txt=document.getElementById('import-prog-txt');
   try{
-    prog.classList.add('show');bar.style.width='10%';txt.textContent='KMZ 읽는 중...';
+    prog.classList.add('show');bar.style.width='10%';txt.textContent=tr('s.kmzreading');
     const zip=await JSZip.loadAsync(await file.arrayBuffer());
-    const kmlFile=zip.file('doc.kml');if(!kmlFile){toast('doc.kml 없음');return;}
-    bar.style.width='25%';txt.textContent='KML 분석 중...';
+    const kmlFile=zip.file('doc.kml');if(!kmlFile){toast(tr('s.nodockml'));return;}
+    bar.style.width='25%';txt.textContent=tr('s.kmlanalyzing');
     const kml=new DOMParser().parseFromString(await kmlFile.async('string'),'text/xml');
     const pms=[...kml.querySelectorAll('Placemark')];
     await loadProjects();
@@ -2784,7 +2791,7 @@ async function onImportKMZ(e){
     let imported=0,skipped=0;
     for(let i=0;i<pms.length;i++){
       bar.style.width=(25+Math.round(70*(i/pms.length)))+'%';
-      txt.textContent=`${i+1}/${pms.length}장...`;
+      txt.textContent=`${i+1}/${pms.length}${tr('g.counter')}...`;
       const pm=pms[i];
       const coordStr=pm.querySelector('Point coordinates')?.textContent?.trim()||'';
       if(!coordStr){skipped++;continue;}
@@ -2792,7 +2799,7 @@ async function onImportKMZ(e){
       const lon=parseFloat(lonS),lat=parseFloat(latS),alt=parseFloat(altS)||null;
       if(isNaN(lat)||isNaN(lon)){skipped++;continue;}
       const timeStr=pm.querySelector('TimeStamp when')?.textContent||new Date().toISOString();
-      const projName=pm.querySelector('name')?.textContent?.trim()||'가져온 사진';
+      const projName=pm.querySelector('name')?.textContent?.trim()||tr('s.importedphotos');
       const descHTML=pm.querySelector('description')?.textContent||'';
       let description='',imgPath='';
       if(descHTML){const tmp=document.createElement('div');tmp.innerHTML=descHTML;imgPath=tmp.querySelector('img')?.getAttribute('src')||'';const t=tmp.textContent||'';const dm=t.match(/▸\s*([^\n]+)/);if(dm)description=dm[1].trim();}
@@ -2809,17 +2816,17 @@ async function onImportKMZ(e){
       await savePhotoData(blob,{time:timeStr,lat,lon,alt,acc:null,projectId:proj.id||null,projectName:proj.name,projectColor:proj.color,description});
       imported++;
     }
-    bar.style.width='100%';txt.textContent='완료!';
+    bar.style.width='100%';txt.textContent=tr('s.done');
     setTimeout(()=>prog.classList.remove('show'),1500);
     await loadAllPhotos();
-    toast(imported>0?`✅ ${imported}장 가져옴`:`가져온 사진 없음 (${skipped}건 스킵)`);
+    toast(imported>0?tr('s.imported',{n:imported}):tr('s.noimp',{n:skipped}));
     renderExportInSettings();
-  }catch(err){prog.classList.remove('show');toast('가져오기 실패: '+err.message);}
+  }catch(err){prog.classList.remove('show');toast(tr('s.impfail')+err.message);}
 }
 
 // ===== 전체 삭제 =====
 async function clearAll(){
-  if(!confirm('모든 데이터를 삭제할까요?\n\n⚠️ APK에서는 현장캠 폴더의 모든 파일이 삭제돼요'))return;
+  if(!confirm(tr('s.delallconfirm')))return;
   if(IS_APK){
     for(const p of projects)AndroidBridge.deleteProject(p.name);
   }else{
@@ -2830,18 +2837,18 @@ async function clearAll(){
   photoLayerGroups={};photoLayerVisible={};savePhotoLayerVisible();
   Object.values(leafletLayers).forEach(l=>map&&map.removeLayer(l));
   leafletLayers={};
-  toast('전체 삭제됨');
+  toast(tr('s.delalled'));
 }
 
 // ===== 라이트박스 =====
 function openLightbox(url,meta){
   document.getElementById('lb-img').src=url;
   document.getElementById('lb-meta').innerHTML=meta.replace(/\n/g,'<br>');
-  document.getElementById('lightbox').classList.add('show');
+  document.getElementById('lightbox').classList.add('show');backStackPush();BACK_LAYERS[5].open=1;
   document.body.style.overflow='hidden';
 }
 function closeLightbox(){
-  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightbox').classList.remove('show');if(BACK_LAYERS[5].open){BACK_LAYERS[5].open=0;backStackTrim(1);}
   document.body.style.overflow='';
 }
 
@@ -2864,7 +2871,49 @@ async function initApp(){
   }
 }
 // loadLibs보다 늦게 로드되면 이벤트로 알림
+var I18N={"ko": {"app.title": "현장캠", "g.wait": "GPS 대기", "g.err": "GPS 오류", "g.title": "사진 목록", "g.count0": "0장", "g.counter": "장", "s.title": "설정", "s.lang": "Language / 언어", "s.storage": "저장 위치", "s.folder": "📁 현장캠 폴더", "s.internalpath": "내부저장소/현장캠/", "s.fileaccess": "파일관리자 · USB에서 접근 가능", "s.map": "지도", "s.domestic": "🇰🇷 국내용", "s.vworldsat": "🛰️ VWorld위성", "s.cadmap": "지적도", "s.cadnote": "↑ 지적도는 API 키 필요 (무료)", "s.intl": "🌏 해외용", "s.esrisat": "🛰️ ESRI위성", "s.vwkey": "VWorld API 키 (지적도용)", "s.vwfree": "api.vworld.kr 무료 발급", "s.ph.pastekey": "API 키 붙여넣기", "s.save": "저장", "s.keyok": "API 키 저장됨", "s.layers": "레이어 관리", "s.ph.url": "🔗 KML/KMZ URL", "s.load": "불러오기", "s.blist": "🚫 삭제한 파일 목록 (블랙리스트) ", "s.expoimp": "내보내기 / 가져오기", "s.kmzimp": "KMZ 가져오기", "s.kmzimp2": "다른 사람이 내보낸 KMZ 합치기", "s.processing": "처리 중...", "s.data": "데이터", "s.delall": "🗑 전체 삭제", "s.scanned": "✅ {n}개 새 파일 읽었어요", "s.nonew": "새 파일 없음 (이미 읽었거나 파일 없음)", "s.exbl": "삭제이력 제외 {n}개 — 설정 → 삭제한 파일 목록에서 복구 가능", "s.failed": "❌ 실패 {n}개: {list}{more}", "s.more": " 외", "s.noprj": "⚠️ {n}: .prj 없음 - 좌표계 미지정 시 위치가 틀릴 수 있어요", "s.reading": "📂 {n} 읽는 중...", "s.bllist": "삭제한 파일 목록 ({n}개)", "s.restore": "🔄 복구", "s.backtolayers": "← 레이어 목록으로", "s.restored": "✅ 복구됨: {name} ({n}개 레이어)", "s.notfound": "해제됨 — 기기에 해당 파일이 없어요 (USB로 넣은 뒤 폴더 읽기)", "s.layersadded": "✅ {n}개 레이어 추가됨 ({name})", "s.layeradded": "✅ {name} 추가됨", "s.imported": "✅ {n}장 가져옴", "s.noimp": "가져온 사진 없음 ({n}건 스킵)", "c.starthint": "아래 버튼을 눌러 카메라를 시작하세요", "c.start": "📷 카메라 시작", "c.started": "📷 카메라 시작됨", "c.savedgps": "📸 저장됨! (GPS 포함)", "c.savednogps": "⚠️ GPS 없이 저장됨 — 지도·내보내기에서 제외돼요", "c.noproj": "프로젝트 없음", "c.noproj2": "(프로젝트 없음)", "c.pickproj": "프로젝트 선택 ▾", "c.count": "{n}장", "c.nocoord": "좌표 없음", "c.alt": "고도 {n}m", "c.ph.desc": "📝 촬영 부위 설명 (예: 3번 교각 균열)", "c.perm": "카메라 권한이 거부됐어요.\n앱 설정 → 권한에서 카메라를 허용해주세요.", "c.cantstart": "📷 카메라를 시작할 수 없어요", "c.keepstopping": "📷 카메라가 반복해서 멈춰요\n아래 버튼으로 다시 시작해주세요", "p.pick": "프로젝트 선택", "p.addnew": "+ 새 프로젝트 추가", "p.new": "새 프로젝트 추가", "p.newsub": "공사명이나 지역명을 입력해주세요", "p.ph.example": "예: 1공구 도로공사", "p.empty": "아직 프로젝트가 없어요<br>아래 버튼으로 추가해보세요", "m.cancel": "취소", "m.add": "추가", "m.addsel": "추가 후 선택", "m.coords": "좌표", "m.addr": "주소", "m.searching": "검색 중...", "m.copycoords": "좌표 복사", "m.copyaddr": "주소 복사", "m.csguess": "ℹ️ 좌표계 미지정 파일 - {c} 추정 변환", "m.crsdone": "✅ 한국 좌표계 변환 완료 ({a}/{b}점)", "l.allon": "전체 켜기", "l.alloff": "전체 끄기", "l.photos": "사진", "l.photoof": "{n}장", "l.gpsof": "GPS {n}장", "l.holdmove": "길게 눌러 이동", "l.none": "레이어 없음", "l.count": "레이어 {n}개", "e.title": "⚠️ 파일을 읽지 못했어요", "e.copy": "복사", "e.ok": "확인", "e.webviewcam": "이 기기 WebView는 카메라 API(getUserMedia) 미지원 — 시스템 WebView 업데이트 필요", "e.pinsphotos": "핀+사진", "e.pinsonly": "핀만", "e.qgis": "QGIS용", "e.photon": "사진 {n}", "e.expall": "전체 내보내기", "n.cam": "카메라", "n.gal": "목록", "n.map": "지도", "c.nocam": "사용 가능한 카메라가 없어요", "p.delconfirm": "\n\n이 프로젝트 폴더를 삭제할까요?\n(사진·레이어 파일 모두 삭제됩니다)", "p.deleted": "프로젝트 삭제됨", "m.namereq": "이름을 입력해주세요", "p.added": " 추가됨", "g.all": "전체", "g.nofilter": "이 프로젝트의 사진이 없어요", "g.nophoto": "아직 사진이 없어요", "g.pickchip": "위 칩으로 다른 프로젝트를 선택해주세요", "g.takelater": "카메라 탭에서 촬영해보세요", "c.nocoord2": "좌표없음", "g.deleted": "삭제됨", "m.loading": "지도 라이브러리 로드 중... 잠시 후 다시 탭해주세요", "m.initfail": "지도 초기화 실패: ", "m.attrvsat": "© VWorld 위성", "m.attrcad": "© VWorld 지적도", "m.openmapfirst": "지도 탭을 먼저 열어주세요", "m.needkey": "지적도는 VWorld API 키가 필요해요", "m.noaddr": "주소 없음", "m.addrfail": "주소 검색 실패", "m.copied": "📋 복사됨!", "l.delconfirm": "\n\n이 레이어를 삭제할까요?\n복구가 필요하면 설정 → 삭제한 파일 목록에서 할 수 있어요", "l.deleted": "레이어 삭제됨 (재스캔 시 제외됨)", "s.keyok2": "API 키 저장됨", "m.keyreq": "API 키를 입력해주세요", "s.savedshort": "저장됨", "l.reordered": "↕ 레이어 순서 변경됨", "s.parsefail": "파싱 실패", "m.apkonly": "APK에서만 사용 가능해요", "s.scanning": "폴더 스캔 중...", "s.cp949": "한글 인코딩 CP949 감지", "s.loading": "파일 불러오는 중...", "s.noprj2": "⚠️ .prj 없음 - 좌표계를 몰라 위치가 틀릴 수 있어요", "s.nokml": "KMZ 안에 KML이 없어요", "s.badtype": "지원하지 않는 파일 형식", "s.errctx": "파일: {file} / 프로젝트: {proj}", "m.copyfail": "복사 실패", "m.nocopy": "이 기기에서는 복사 미지원", "s.nohistory": "삭제 이력이 없어요", "s.restoring": "복구 중... (폴더 다시 읽는 중)", "s.clearbl": "삭제 이력을 전부 지울까요?\n지금 바로 폴더를 다시 읽어 복구합니다.", "s.restoring2": "복구 중... (전체 폴더 다시 읽는 중)", "s.restoredn": "✅ {n}개 레이어 복구됨", "s.restshort": "해제됨 — 기기에 파일이 없어요", "m.urlreq": "URL을 입력해주세요", "s.urlloading": "URL 불러오는 중...", "s.urlfail": "URL 불러오기 실패: ", "m.nogps": "GPS 사진이 없어요", "s.creating": "생성 중...", "e.expfail": "내보내기 실패: ", "s.kmzreading": "KMZ 읽는 중...", "s.nodockml": "doc.kml 없음", "s.kmlanalyzing": "KML 분석 중...", "s.done": "완료!", "s.impfail": "가져오기 실패: ", "s.delallconfirm": "모든 데이터를 삭제할까요?\n\n⚠️ APK에서는 현장캠 폴더의 모든 파일이 삭제돼요", "s.delalled": "전체 삭제됨", "c.hup": "▲ 위로", "c.hdown": "▼ 아래로", "l.color": "색상", "l.icon": "아이콘", "m.nocrswarn": "좌표변환: 유효 변환 없음 - 원본 유지", "m.crserr": "좌표변환실패", "s.fileerr": "파일 처리 실패:", "s.scanerr": "스캔 실패:", "c.stuck": "📷 카메라가 반복해서 멈춰요\n아래 버튼으로 다시 시작해주세요", "c.startfirst": "카메라를 먼저 시작해주세요", "c.pickfirst": "⚠️ 프로젝트를 먼저 선택해주세요", "m.unclassified": "미분류", "m.nocoord2": "좌표없음", "m.deleted": "삭제됨", "m.maploading": "지도 라이브러리 로드 중... 잠시 후 다시 탭해주세요", "m.opentabfirst": "지도 탭을 먼저 열어주세요", "m.cadkeyneed": "지적도는 VWorld API 키가 필요해요", "m.copied3": "복사됨", "s.keysaved": "✅ API 키 저장됨", "s.keyenter": "API 키를 입력해주세요", "s.savedok": "✅ 저장됨", "s.keysaved2": "API 키 저장됨", "s.fileloading": "파일 불러오는 중...", "s.delhistconfirm": "삭제 이력을 전부 지울까요?\n지금 바로 폴더를 다시 읽어 복구합니다.", "s.restoring1": "복구 중... (폴더 다시 읽는 중)", "s.notondevice": "해제됨 — 기기에 파일이 없어요", "s.urlneed": "URL을 입력해주세요", "s.importedphotos": "가져온 사진", "e.creating": "생성 중...", "x.notjpeg": "JPEG 아님", "x.markerbad": "마커 정렬 깨짐@", "x.fileproj": " / 프로젝트: ", "m.vwsat": "© VWorld 위성", "m.vwcad": "© VWorld 지적도", "m.needname": "이름을 입력해주세요", "x.file": "파일:"}, "en": {"app.title": "HyunjangCam", "g.wait": "Waiting for GPS", "g.err": "GPS error", "g.title": "Photos", "g.count0": "0 photos", "g.counter": " photos", "s.title": "Settings", "s.lang": "Language / 언어", "s.storage": "Storage", "s.folder": "📁 HyunjangCam folder", "s.internalpath": "Internal storage/HyunjangCam/", "s.fileaccess": "File manager · accessible via USB", "s.map": "Map", "s.domestic": "🇰🇷 Korea", "s.vworldsat": "🛰️ VWorld Satellite", "s.cadmap": "Cadastral", "s.cadnote": "↑ Cadastral map needs an API key (free)", "s.intl": "🌏 International", "s.esrisat": "🛰️ ESRI Satellite", "s.vwkey": "VWorld API key (cadastral)", "s.vwfree": "Free at api.vworld.kr", "s.ph.pastekey": "Paste API key", "s.save": "Save", "s.keyok": "API key saved", "s.layers": "Layers", "s.ph.url": "🔗 KML/KMZ URL", "s.load": "Load", "s.blist": "🚫 Deleted file list (blacklist) ", "s.expoimp": "Export / Import", "s.kmzimp": "Import KMZ", "s.kmzimp2": "Merge a KMZ exported elsewhere", "s.processing": "Processing...", "s.data": "Data", "s.delall": "🗑 Delete all", "s.scanned": "✅ {n} new file(s) loaded", "s.nonew": "No new files (already loaded or none found)", "s.exbl": "{n} excluded (deleted) — restore in Settings → Deleted files", "s.failed": "❌ {n} failed: {list}{more}", "s.more": " etc.", "s.noprj": "⚠️ {n}: no .prj — location may be wrong without a CRS", "s.reading": "📂 Reading {n}...", "s.bllist": "Deleted files ({n})", "s.restore": "🔄 Restore", "s.backtolayers": "← Back to layer list", "s.restored": "✅ Restored: {name} ({n} layer(s))", "s.notfound": "Unblocked — file not on device (copy via USB, then read the folder)", "s.layersadded": "✅ {n} layer(s) added ({name})", "s.layeradded": "✅ {name} added", "s.imported": "✅ {n} photo(s) imported", "s.noimp": "No photos imported ({n} skipped)", "c.starthint": "Tap the button below to start the camera", "c.start": "📷 Start camera", "c.started": "📷 Camera started", "c.savedgps": "📸 Saved! (with GPS)", "c.savednogps": "⚠️ Saved without GPS — excluded from map & export", "c.noproj": "No project", "c.noproj2": "(no project)", "c.pickproj": "Select project ▾", "c.count": "{n} photos", "c.nocoord": "No coords", "c.alt": "Alt {n}m", "c.ph.desc": "📝 Description (e.g. Pier 3 crack)", "c.perm": "Camera permission denied.\nAllow Camera in app Settings → Permissions.", "c.cantstart": "📷 Cannot start the camera", "c.keepstopping": "📷 Camera keeps stopping.\nRestart with the button below", "p.pick": "Select project", "p.addnew": "+ New project", "p.new": "New project", "p.newsub": "Enter a site or area name", "p.ph.example": "e.g. Sec.1 road works", "p.empty": "No projects yet.<br>Add one with the button below", "m.cancel": "Cancel", "m.add": "Add", "m.addsel": "Add & select", "m.coords": "Coordinates", "m.addr": "Address", "m.searching": "Searching...", "m.copycoords": "Copy coords", "m.copyaddr": "Copy address", "m.csguess": "ℹ️ No CRS declared — assumed {c}", "m.crsdone": "✅ KR coord conversion done ({a}/{b})", "l.allon": "All on", "l.alloff": "All off", "l.photos": "Photos", "l.photoof": "{n} photos", "l.gpsof": "GPS {n}", "l.holdmove": "Hold & drag to reorder", "l.none": "No layers", "l.count": "{n} layer(s)", "e.title": "⚠️ Failed to read file", "e.copy": "Copy", "e.ok": "OK", "e.webviewcam": "This device WebView lacks getUserMedia — update Android System WebView", "e.pinsphotos": "pins+photos", "e.pinsonly": "pins only", "e.qgis": "for QGIS", "e.photon": "Photo {n}", "e.expall": "Export all", "n.cam": "Camera", "n.gal": "Photos", "n.map": "Map", "c.nocam": "No camera available", "p.delconfirm": "\n\nDelete this project folder?\n(All photos & layer files will be deleted)", "p.deleted": "Project deleted", "m.namereq": "Enter a name", "p.added": " added", "g.all": "All", "g.nofilter": "No photos in this project", "g.nophoto": "No photos yet", "g.pickchip": "Pick another project with the chips above", "g.takelater": "Take photos in the Camera tab", "c.nocoord2": "No coords", "g.deleted": "Deleted", "m.loading": "Loading map library... tap again shortly", "m.initfail": "Map init failed: ", "m.attrvsat": "© VWorld Satellite", "m.attrcad": "© VWorld Cadastral", "m.openmapfirst": "Open the Map tab first", "m.needkey": "Cadastral map needs a VWorld API key", "m.noaddr": "No address", "m.addrfail": "Address lookup failed", "m.copied": "📋 Copied!", "l.delconfirm": "\n\nDelete this layer?\nRestore later in Settings → Deleted files", "l.deleted": "Layer deleted (excluded on rescan)", "s.keyok2": "API key saved", "m.keyreq": "Enter the API key", "s.savedshort": "Saved", "l.reordered": "↕ Layer order changed", "s.parsefail": "Parse failed", "m.apkonly": "APK only", "s.scanning": "Scanning folders...", "s.cp949": "Korean encoding CP949 detected", "s.loading": "Loading file...", "s.noprj2": "⚠️ No .prj — location may be wrong (unknown CRS)", "s.nokml": "No KML inside the KMZ", "s.badtype": "Unsupported file type", "s.errctx": "File: {file} / Project: {proj}", "m.copyfail": "Copy failed", "m.nocopy": "Copy not supported on this device", "s.nohistory": "No deletion history", "s.restoring": "Restoring... (re-reading folder)", "s.clearbl": "Clear all deletion history?\nThe folder will be re-read to restore now.", "s.restoring2": "Restoring... (rescanning all folders)", "s.restoredn": "✅ {n} layer(s) restored", "s.restshort": "Unblocked — file not on device", "m.urlreq": "Enter a URL", "s.urlloading": "Loading URL...", "s.urlfail": "URL load failed: ", "m.nogps": "No GPS photos", "s.creating": "Creating...", "e.expfail": "Export failed: ", "s.kmzreading": "Reading KMZ...", "s.nodockml": "doc.kml not found", "s.kmlanalyzing": "Analyzing KML...", "s.done": "Done!", "s.impfail": "Import failed: ", "s.delallconfirm": "Delete ALL data?\n\n⚠️ On APK this deletes every file in the Hyeonjangcam folder", "s.delalled": "All data deleted", "c.hup": "▲ Up", "c.hdown": "▼ Down", "l.color": "Color", "l.icon": "Icon", "m.nocrswarn": "CRS: no valid transform - keeping original", "m.crserr": "CRS transform failed", "s.fileerr": "File processing failed:", "s.scanerr": "Scan failed:", "c.stuck": "📷 Camera keeps freezing\nTap the button below to restart", "c.startfirst": "Start the camera first", "c.pickfirst": "⚠️ Select a project first", "m.unclassified": "Uncategorized", "m.nocoord2": "No coords", "m.deleted": "Deleted", "m.maploading": "Loading map library... tap again shortly", "m.opentabfirst": "Open the Map tab first", "m.cadkeyneed": "Cadmap requires a VWorld API key", "m.copied3": "Copied", "s.keysaved": "✅ API key saved", "s.keyenter": "Enter an API key", "s.savedok": "✅ Saved", "s.keysaved2": "API key saved", "s.fileloading": "Loading file...", "s.delhistconfirm": "Clear all deletion history?\nFolders will be rescanned now to restore.", "s.restoring1": "Restoring... (rescanning folder)", "s.notondevice": "Unblocked — file not on device", "s.urlneed": "Enter a URL", "s.importedphotos": "Imported photos", "e.creating": "Creating...", "x.notjpeg": "Not a JPEG", "x.markerbad": "Marker misaligned@", "x.fileproj": " / project: ", "m.vwsat": "© VWorld Satellite", "m.vwcad": "© VWorld Cadmap", "m.needname": "Enter a name", "x.file": "File:"}};
+var LANG=(function(){try{return localStorage.getItem('app_lang')||'en';}catch(e){return 'en';}})();
+function tr(key,params){var d=I18N[LANG]||I18N.en,s=d[key];if(s==null)s=(I18N.ko[key]!=null?I18N.ko[key]:key);if(params)for(var k in params)s=s.split('{'+k+'}').join(params[k]);return s;}
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){var v=I18N[LANG][el.getAttribute('data-i18n')];if(v!=null)el.textContent=v;});
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){var v=I18N[LANG][el.getAttribute('data-i18n-ph')];if(v!=null)el.setAttribute('placeholder',v);});
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.toggle('on',b.id==='lang-'+LANG);});
+  refreshDynamicTexts();}
+function refreshDynamicTexts(){var e;
+  e=document.getElementById('gps-txt');if(e&&!e.textContent.startsWith('±'))e.textContent=tr('g.wait');
+  e=document.getElementById('hud-proj');if(e&&!e.textContent)e.textContent=tr('c.noproj');
+  e=document.getElementById('base-path-display');if(e&&e.textContent.indexOf('\uB0B4\uBD80\uC800\uC7A5\uC18C')===0)e.textContent=(LANG==='en')?'Internal storage/Hyeonjangcam/':'\uB0B4\uBD80\uC800\uC7A5\uC18C/\uD604\uC7A5\uCE90/';
+}
+function setLang(l){LANG=(l==='ko')?'ko':'en';try{localStorage.setItem('app_lang',LANG);}catch(e){}
+  applyLang();toast(LANG==='ko'?'\uD83C\uDDF0\uD83C\uDDF7 \uD55C\uAD6D\uC5B4':'\uD83C\uDDFA\uD83C\uDDF8 English');}
+
+// ===== Android Back Button: Layer Stack =====
+var BACK_LAYERS=[
+ {id:'settings-panel',isOpen:function(){return document.getElementById('settings-panel').classList.contains('open');},close:function(){closeSettings();},open:0},
+ {id:'proj-panel',isOpen:function(){return document.getElementById('proj-panel').classList.contains('open');},close:function(){closeProjPanel();},open:0},
+ {id:'new-proj-modal',isOpen:function(){return document.getElementById('new-proj-modal').classList.contains('show');},close:function(){closeNewProjModal();},open:0},
+ {id:'layer-proj-panel',isOpen:function(){return document.getElementById('layer-proj-panel').classList.contains('open');},close:function(){cancelLayerProj();},closeIf:function(){return !!window.cancelLayerProj;},open:0},
+ {id:'layer-new-proj-modal',isOpen:function(){return document.getElementById('layer-new-proj-modal').classList.contains('show');},close:function(){closeLayerNewProj();},open:0},
+ {id:'lightbox',isOpen:function(){return document.getElementById('lightbox').classList.contains('show');},close:function(){closeLightbox();},open:0},
+ {id:'err-overlay',isOpen:function(){return document.getElementById('err-overlay').style.display==='flex';},close:function(){closeErrDialog();},closeIf:function(){return !!window.closeErrDialog;},open:0}
+];
+var hbDepth=0,hbInPop=false;
+function backStackPush(){if(hbInPop)return;try{history.pushState({hb:++hbDepth},'','');}catch(e){}}
+function backStackTrim(n){hbDepth=Math.max(0,hbDepth-n);if(n>0){hbInPop=true;try{history.back();}catch(e){}setTimeout(function(){hbInPop=false;},350);}}
+function closeTopLayer(){
+  for(var i=0;i<BACK_LAYERS.length;i++){var L=BACK_LAYERS[i];
+    if(L.open&&(!L.closeIf||L.closeIf())){L.open=0;try{L.close();}catch(e){}
+      hbInPop=true;try{history.back();}catch(e){}setTimeout(function(){hbInPop=false;},350);return true;}}
+  return false;}
+function backStackInit(){
+  window.addEventListener('popstate',function(ev){
+    if(hbInPop){hbInPop=false;return;}
+    if(closeTopLayer())return;
+  });}
+applyLang();backStackInit();
 window.dispatchEvent(new Event('appReady'));
+
+
 </script>
 </body>
 </html>
