@@ -651,9 +651,20 @@ loadLibs();
 <script>
 // ===== 상수 =====
 const IS_APK = !!window.AndroidBridge;
-const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','#00BCD4','#FF5722'];
-const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4'];
-let layerColorIdx=0;
+const PROJ_COLORS=['#FF6B00','#4CAF50','#2196F3','#E91E63','#9C27B0','#FF9800','#00BCD4','#FF5722',
+  '#8BC34A','#3F51B5','#FFC107','#009688','#F44336','#673AB7','#CDDC39','#03A9F4']; // 16색 (폴더 복사로 색 겹칠 확률 낮춤 - 겹쳐도 강제교정은 안 함)
+// 16색으로 확장 (기존 6색은 폴더 하나에 7개 이상 레이어가 있으면 바로 겹쳤음)
+const LAYER_COLORS=['#4CAF50','#2196F3','#FF9800','#E91E63','#9C27B0','#00BCD4',
+  '#FF5722','#8BC34A','#3F51B5','#FFC107','#009688','#F44336',
+  '#673AB7','#CDDC39','#03A9F4','#795548'];
+
+// 레이어 색상 배정: "앱을 켠 뒤 계속 증가하는 전역 카운터"가 아니라
+// "그 프로젝트에 현재 있는 레이어 수"를 기준으로 뽑는다.
+// → 프로젝트별로 독립적이고, 스캔을 여러 번 해도 항상 같은 규칙으로 안 겹침.
+function nextLayerColor(projName){
+  const used=allLayers.filter(l=>(l.projectName||l.project)===projName).length;
+  return LAYER_COLORS[used%LAYER_COLORS.length];
+}
 
 // 레이어 색상 팔레트
 const COLOR_PALETTE=['#FF4444','#FF6B00','#FFA500','#FFDD00','#00CC44','#00BCD4',
@@ -1172,17 +1183,18 @@ async function renderProjSelectList(){
   const el=document.getElementById('proj-select-list');
   if(!projects.length){el.innerHTML='<div class="no-items">'+tr('p.empty')+'</div>';return;}
   el.innerHTML='';
-  projects.forEach(p=>{
+  projects.forEach((p,pIdx)=>{
     const cnt=allPhotos.filter(ph=>ph.projectName===p.name).length;
     const div=document.createElement('div');div.className='proj-item';
     div.innerHTML=`<div class="proj-item-dot" style="background:${p.color}"></div>
       <div class="proj-item-info"><div class="proj-item-name">${p.name}</div><div class="proj-item-cnt">${tr('c.count',{n:cnt})} &nbsp;|&nbsp; 📁 ${tr('s.internalpath')}/${p.name}/</div></div>
-      <button class="proj-del-btn" onclick="event.stopPropagation();doDeleteProject('${p.name}')">
+      <button class="proj-del-btn" data-del-pidx="${pIdx}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
         </svg>
       </button>
       <div class="proj-item-check">${selectedProject?.name===p.name?'✓':''}</div>`;
+    div.querySelector('[data-del-pidx]').onclick=(e)=>{e.stopPropagation();doDeleteProject(p.name);};
     div.onclick=()=>selectProject(p);el.appendChild(div);
   });
 }
@@ -1599,6 +1611,7 @@ function saveVWorldKey(){
 }
 
 // ===== 설정 내 레이어 목록 =====
+let lastSortedProjs=[]; // renderSettingsLayerList가 그린 프로젝트명 순서 (인덱스 클릭 위임용 - 이름에 특수문자가 있어도 안전)
 function renderSettingsLayerList(){
   const el=document.getElementById('settings-layer-list');if(!el)return;
   const gpsPhotos=allPhotos.filter(p=>p.lat&&p.lon); // 지도 마커용 (GPS 있는 것만)
@@ -1615,8 +1628,9 @@ function renderSettingsLayerList(){
     const ai=projOrder.indexOf(a),bi=projOrder.indexOf(b);
     return (ai<0?999:ai)-(bi<0?999:bi);
   });
+  lastSortedProjs=sortedProjs; // 클릭 위임 핸들러가 인덱스→이름 변환에 사용
 
-  sortedProjs.forEach(proj=>{
+  sortedProjs.forEach((proj,projIdx)=>{
     // 사진 행: 전체 사진 수 표시 (GPS 있는 것만 지도에 찍히지만 목록엔 전체)
     const projPhotos=allPhotos.filter(p=>(p.projectName||tr('m.unclassified'))===proj);
     const projGpsPhotos=gpsPhotos.filter(p=>(p.projectName||tr('m.unclassified'))===proj);
@@ -1634,13 +1648,13 @@ function renderSettingsLayerList(){
     const projColor=projects.find(p=>p.name===proj)?.color||'#888';
 
     const isCollapsed=collapsedProjects.has(proj);
-    html+=`<div class="layer-proj-hdr" onclick="toggleProjCollapse('${encodeURIComponent(proj)}')">
+    html+=`<div class="layer-proj-hdr" data-pidx="${projIdx}">
       <div style="display:flex;align-items:center;gap:6px">
         <div class="layer-color" style="background:${projColor};width:10px;height:10px;border-radius:2px"></div>
         <span class="layer-proj-name">${proj}</span>
         <span class="layer-proj-arrow" style="transform:rotate(${isCollapsed?'-90':'0'}deg)">▾</span>
       </div>
-      <button class="layer-proj-toggle" onclick="event.stopPropagation();toggleProjectAll('${encodeURIComponent(proj)}',${!allOn})">${allOn?tr('l.alloff'):tr('l.allon')}</button>
+      <button class="layer-proj-toggle" data-pidx-all="${projIdx}" data-pidx-allon="${!allOn}">${allOn?tr('l.alloff'):tr('l.allon')}</button>
     </div>
     <div class="layer-proj-body${isCollapsed?' collapsed':''}">`;
 
@@ -1695,6 +1709,29 @@ function renderSettingsLayerList(){
     html='<div style="font-size:12px;color:var(--dim);padding:8px 0">'+tr('l.none')+'</div>';
   el.innerHTML=html;
   updateBlCount();
+  bindProjHdrDelegation(el);
+}
+
+// 프로젝트 헤더 클릭을 위임으로 처리 (이름을 onclick 문자열에 직접 꽂지 않음 →
+// 아포스트로피/따옴표가 든 이름이어도 안전. data-pidx는 lastSortedProjs 인덱스)
+let projHdrDelegationBound=new WeakSet();
+function bindProjHdrDelegation(el){
+  if(projHdrDelegationBound.has(el))return; // 같은 DOM 노드엔 한 번만 바인딩 (innerHTML 재설정에도 리스너는 유지됨)
+  projHdrDelegationBound.add(el);
+  el.addEventListener('click',(e)=>{
+    const toggleBtn=e.target.closest('[data-pidx-all]');
+    if(toggleBtn){
+      e.stopPropagation();
+      const proj=lastSortedProjs[+toggleBtn.getAttribute('data-pidx-all')];
+      if(proj!=null)toggleProjectAll(proj,toggleBtn.getAttribute('data-pidx-allon')==='true');
+      return;
+    }
+    const hdr=e.target.closest('[data-pidx]');
+    if(hdr){
+      const proj=lastSortedProjs[+hdr.getAttribute('data-pidx')];
+      if(proj!=null)toggleProjCollapse(proj);
+    }
+  });
 }
 
 function toggleLayerExpand(eKey){
@@ -1703,8 +1740,7 @@ function toggleLayerExpand(eKey){
   renderSettingsLayerList();
 }
 
-function toggleProjCollapse(projEncoded){
-  const proj=decodeURIComponent(projEncoded);
+function toggleProjCollapse(proj){
   if(collapsedProjects.has(proj))collapsedProjects.delete(proj);
   else collapsedProjects.add(proj);
   localStorage.setItem('collapsedProjects',JSON.stringify([...collapsedProjects]));
@@ -1886,8 +1922,7 @@ function layerTouchCancel(){
 }
 
 // 프로젝트 사진 + 레이어 전체 토글
-async function toggleProjectAll(projEncoded,visible){
-  const proj=decodeURIComponent(projEncoded);
+async function toggleProjectAll(proj,visible){
   const photoKey=proj===tr('m.unclassified')?'none':proj;
   // 사진 토글
   photoLayerVisible[photoKey]=visible;
@@ -1895,7 +1930,7 @@ async function toggleProjectAll(projEncoded,visible){
   const lg=photoLayerGroups[photoKey];
   if(lg){visible?lg.addTo(map):map.removeLayer(lg);}
   // 레이어 토글
-  await toggleProjectLayers(projEncoded,visible);
+  await toggleProjectLayers(proj,visible);
 }
 
 // ===== 레이어 순서 이동 (확장 패널 ▲▼ 버튼) =====
@@ -1944,8 +1979,7 @@ function reapplyLayerOrder(){
 }
 
 // 프로젝트 전체 레이어 켜기/끄기
-async function toggleProjectLayers(projEncoded,visible){
-  const proj=decodeURIComponent(projEncoded);
+async function toggleProjectLayers(proj,visible){
   for(const l of allLayers){
     if((l.projectName||l.project||tr('m.unclassified'))!==proj)continue;
     l.visible=visible;
@@ -2166,7 +2200,7 @@ async function scanProjectLayers(projName,scanStats){
                 if(!ml.geojson.features.length)continue;
                 if(existingNames.has(ml.name)||existingSrc.has(name))continue;
                 if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
-                const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+                const color=nextLayerColor(projName);
                 await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
               continue;
             }
@@ -2182,7 +2216,7 @@ async function scanProjectLayers(projName,scanStats){
               if(!ml.geojson.features.length)continue;
               if(existingNames.has(ml.name)||existingSrc.has(name))continue;
               if(isScanBlacklisted(projName,ml.name)||isScanBlacklisted(projName,name))continue;
-              const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+              const color=nextLayerColor(projName);
               await saveLayerData(projName,ml.name,ml.geojson,color,true,'circle',name);added++;}
             continue;
           }
@@ -2197,7 +2231,7 @@ async function scanProjectLayers(projName,scanStats){
         }
 
         if(geojson){
-          const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+          const color=nextLayerColor(projName);
           await saveLayerData(projName,name,geojson,color,true,'circle',name);
           added++;
           toast(tr('s.reading',{n:name}));
@@ -2340,7 +2374,7 @@ async function loadLayerFile(file,projectName){
       for(const ml of multiLayers){
         if(!ml.geojson.features?.length)continue;
         removeScanBlacklist(projectName,ml.name);
-        const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+        const color=nextLayerColor(projectName);
         await saveLayerData(projectName,ml.name,ml.geojson,color,true,'circle',displayName);
         const nl=allLayers[allLayers.length-1];
         if(nl)addLeafletLayer(nl);
@@ -2355,7 +2389,7 @@ async function loadLayerFile(file,projectName){
     }
 
     // 단일 레이어 처리
-    const color=LAYER_COLORS[layerColorIdx++%LAYER_COLORS.length];
+    const color=nextLayerColor(projectName);
     const name=displayName||file.name.replace(/\.[^.]+$/,'');
     removeScanBlacklist(projectName, name); // 수동 추가 시 블랙리스트 제거 (원본/레이어 이름 동일)
     await saveLayerData(projectName,name,geojson,color,true,'circle',displayName||name);
