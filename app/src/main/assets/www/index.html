@@ -1544,8 +1544,11 @@ function addLeafletLayer(l){
       return L.marker(ll,{icon});
     },
     onEachFeature:(f,lf2)=>{
-      const p=f.properties||{};
-      lf2.bindPopup(`<div class="popup-title">${p.name||p.NAME||l.name}</div><div class="popup-meta" style="color:var(--dim)">${l.projectName||l.project||''}</div>`);
+      // 레이어(선/면) 클릭 시 지도 click 이벤트가 전파 안 되어 주소조회(onMapClick)가 안 뜨는 문제 수정.
+      // bindPopup은 쓰지 않음 - 열렸다가 onMapClick의 팝업(autoClose)에 즉시 닫히면서
+      // popupopen/popupclose가 이중 발생해 백스택(히스토리) 상태가 꼬이는 회귀가 있었음(검토에서 발견).
+      // 레이어 이름은 지도 클릭과 동일하게 좌표/주소 팝업으로 통일.
+      lf2.on('click',(ev)=>{ L.DomEvent.stopPropagation(ev); onMapClick(ev); });
     }
   });
   leafletLayers[key]=lf;
