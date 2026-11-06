@@ -1479,8 +1479,21 @@ async function onMapClick(e){
       <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">${tr('m.copycoords')}</button></div>
     </div>`).openOn(map);
   try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
-    const d=await r.json();const addr=d.display_name||tr('m.noaddr');
+    const vwKey=localStorage.getItem('vworld_key')||'';
+    let addr=null;
+    // VWorld 주소 API 우선 (국내 지번까지 정확) - 키 있을 때만 시도, 실패 시 OSM으로 폴백
+    if(vwKey){
+      try{
+        const rv=await fetch(`https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&type=parcel&format=json&key=${vwKey}`);
+        const dv=await rv.json();
+        const res=dv&&dv.response;
+        if(res&&res.status==='OK'&&res.result&&res.result[0]&&res.result[0].text)addr=res.result[0].text;
+      }catch(e3){/* VWorld 실패 시 아래 OSM 폴백으로 진행 */}
+    }
+    if(!addr){
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
+      const d=await r.json();addr=d.display_name||tr('m.noaddr');
+    }
     const el=document.getElementById('paddr');
     if(el){el.textContent=addr;
       const row=el.nextElementSibling;
