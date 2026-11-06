@@ -1471,12 +1471,12 @@ function updateMyLocation(coords){
 
 async function onMapClick(e){
   const {lat,lng}=e.latlng;const ls=lat.toFixed(6),lo=lng.toFixed(6);
+  const coordText=`${ls}, ${lo}`;
   const popup=L.popup({maxWidth:260}).setLatLng(e.latlng)
     .setContent(`<div><div class="coord-title">${tr('m.coords')}</div>
-      <div class="coord-val">${ls}, ${lo}</div>
+      <div class="coord-val" style="cursor:pointer" onclick="copyText('${coordText}')">${coordText}</div>
       <div class="coord-title">${tr('m.addr')}</div>
       <div class="addr-val" id="paddr">🔍 ${tr('m.searching')}</div>
-      <div class="copy-row"><button class="copy-btn" onclick="copyText('${ls}, ${lo}')">${tr('m.copycoords')}</button></div>
     </div>`).openOn(map);
   try{
     const vwKey=localStorage.getItem('vworld_key')||'';
@@ -1484,10 +1484,21 @@ async function onMapClick(e){
     // VWorld 주소 API 우선 (국내 지번까지 정확) - 키 있을 때만 시도, 실패 시 OSM으로 폴백
     if(vwKey){
       try{
-        const rv=await fetch(`https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&type=parcel&format=json&key=${vwKey}`);
-        const dv=await rv.json();
-        const res=dv&&dv.response;
-        if(res&&res.status==='OK'&&res.result&&res.result[0]&&res.result[0].text)addr=res.result[0].text;
+        const vwUrl=`https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&type=parcel&format=json&key=${vwKey}`;
+        let vwText=null;
+        if(IS_APK){
+          // 네이티브 브리지로 요청 (CORS 없음, WebView fetch보다 안정적/빠름)
+          const result=AndroidBridge.fetchUrl(vwUrl);
+          if(result&&result.startsWith('text:'))vwText=result.substring(5);
+        }else{
+          const rv=await fetch(vwUrl);
+          vwText=await rv.text();
+        }
+        if(vwText){
+          const dv=JSON.parse(vwText);
+          const res=dv&&dv.response;
+          if(res&&res.status==='OK'&&res.result&&res.result[0]&&res.result[0].text)addr=res.result[0].text;
+        }
       }catch(e3){/* VWorld 실패 시 아래 OSM 폴백으로 진행 */}
     }
     if(!addr){
@@ -1495,9 +1506,10 @@ async function onMapClick(e){
       const d=await r.json();addr=d.display_name||tr('m.noaddr');
     }
     const el=document.getElementById('paddr');
-    if(el){el.textContent=addr;
-      const row=el.nextElementSibling;
-      if(row)row.innerHTML=`<button class="copy-btn" onclick="copyText('${ls}, ${lo}')">${tr('m.copycoords')}</button><button class="copy-btn sec" onclick="copyText(\`${addr.replace(/`/g,"'")}\`)">${tr('m.copyaddr')}</button>`;
+    if(el){
+      el.textContent=addr;
+      el.style.cursor='pointer';
+      el.onclick=()=>copyText(addr);
     }
   }catch(e2){const el=document.getElementById('paddr');if(el)el.textContent=tr('m.addrfail');}
 }
