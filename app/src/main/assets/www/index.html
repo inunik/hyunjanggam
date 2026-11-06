@@ -1484,14 +1484,11 @@ async function onMapClick(e){
     // VWorld 주소 API 우선 (국내 지번까지 정확) - 키 있을 때만 시도, 실패 시 OSM으로 폴백
     if(vwKey){
       try{
-        const ac=new AbortController();
-        const to=setTimeout(()=>ac.abort(),1500); // CORS차단/느린망에서 오래 안 붙잡도록 1.5초 제한
-        const rv=await fetch(`https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&type=parcel&format=json&key=${vwKey}`,{signal:ac.signal});
-        clearTimeout(to);
+        const rv=await fetch(`https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${lng},${lat}&type=parcel&format=json&key=${vwKey}`);
         const dv=await rv.json();
         const res=dv&&dv.response;
         if(res&&res.status==='OK'&&res.result&&res.result[0]&&res.result[0].text)addr=res.result[0].text;
-      }catch(e3){/* 타임아웃/CORS차단/네트워크실패 시 아래 OSM 폴백으로 진행 */}
+      }catch(e3){/* VWorld 실패 시 아래 OSM 폴백으로 진행 */}
     }
     if(!addr){
       const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ko&zoom=18&addressdetails=1`);
