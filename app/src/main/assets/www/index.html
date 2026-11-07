@@ -1322,8 +1322,25 @@ function initMap(){
   }
   L.control.zoom({position:'bottomright'}).addTo(map);
   map.on('click',onMapClick);
-  map.on('popupopen',function(){mapPopupOpen=true;backStackPush();BACK_LAYERS[7].open=1;});
-  map.on('popupclose',function(){mapPopupOpen=false;if(BACK_LAYERS[7].open){BACK_LAYERS[7].open=0;backStackTrim(1);}});
+  // 팝업→팝업 전환(연속 탭) 시 Leaflet이 close→open을 '같은 틱'에서 동기 연달아 발생시킨다.
+  // close에서 곧장 backStackTrim하면 그 뒤의 open의 backStackPush와 엔트리가 엇갈려
+  // "팝업 열림+히스토리 엔트리 0" 불일치 → 뒤로가기 시 팝업을 못 닫고 앱 종료로 떨어진다.
+  // trim을 setTimeout(0)으로 미루면 같은 틱 안에서만 pending — 전환(동기 open)이면 취소해 엔트리를 물려받고,
+  // 진짜 닫기면 다음 틱에서 즉시 trim. (JS 엔진 구조상 동기 호출 사이에 타이머가 끼어들 수 없어 창 누수 없음)
+  map.on('popupopen',function(){
+    var isTransition=false;
+    if(popTrimTimer){clearTimeout(popTrimTimer);popTrimTimer=null;isTransition=true;}
+    mapPopupOpen=true;
+    if(!isTransition)backStackPush(); // 전환은 기존 엔트리 물려받음, 새로 열림만 push
+    BACK_LAYERS[7].open=1;
+  });
+  map.on('popupclose',function(){
+    mapPopupOpen=false;
+    if(BACK_LAYERS[7].open){
+      BACK_LAYERS[7].open=0;
+      popTrimTimer=setTimeout(function(){popTrimTimer=null;backStackTrim(1);},0);
+    }
+  });
   if(navigator.geolocation)
     navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],15),()=>{});
   refreshMarkers();
@@ -1493,8 +1510,13 @@ async function onMapClick(e){
     .setContent(`<div><div class="coord-title">${tr('m.coords')}</div>
       <div class="coord-val" style="cursor:pointer" onclick="copyText('${coordText}')">${coordText}</div>
       <div class="coord-title">${tr('m.addr')}</div>
-      <div class="addr-val" id="paddr">🔍 ${tr('m.searching')}</div>
+      <div class="addr-val">🔍 ${tr('m.searching')}</div>
     </div>`).openOn(map);
+  // Leaflet은 닫힌 팝업을 200ms 페이드아웃하며 DOM에 남겨둔다 → 연속 탭 시 id paddr 중복.
+  // getElementById는 죽어가는 옛 팝업의 주소칸(문서 앞쪽)을 잡아 주소가 유실되므로,
+  // 이 팝업 인스턴스의 요소 안에서만 주소칸을 찾는다(getElement 스코프 쿼리).
+  const popEl=popup.getElement();
+  const addrEl=popEl?popEl.querySelector('.addr-val'):null;
   try{
     const vwKey=localStorage.getItem('vworld_key')||'';
     let addr=null;
@@ -1521,7 +1543,7 @@ async function onMapClick(e){
     const failed=!addr; // 두 API 모두 실패/타임아웃
     if(failed)addr=tr('m.addrfail'); // 재시도 안내로 마감 — 영구 "검색 중..." 금지
     if(lookupSeq!==mySeq)return; // 느린 이전 응답은 폐기 — 최신 탭의 팝업만 반영
-    const el=document.getElementById('paddr');
+    const el=addrEl;
     if(el){
       el.textContent=addr;
       if(failed){ // 실패 문구는 복사 대상이 아님 — 재탭 유도
@@ -1534,7 +1556,7 @@ async function onMapClick(e){
     }
   }catch(e2){
     if(lookupSeq!==mySeq)return;
-    const el=document.getElementById('paddr');
+    const el=addrEl;
     if(el){el.textContent=tr('m.addrfail');el.style.cursor='default';el.onclick=null;}
   }
 }
@@ -2431,7 +2453,7 @@ async function renderLayerProjList(){
 }
 
 async function selectLayerProject(projName){
-  document.getElementById('layer-proj-panel').classList.remove('open');if(hbDepth>0){hbDepth--;backStackTrim(1);}
+  document.getElementById('layer-proj-panel').classList.remove('open');if(BACK_LAYERS[3].open){BACK_LAYERS[3].open=0;backStackTrim(1);}
   if(!pendingFile)return;
   await loadLayerFile(pendingFile,projName);pendingFile=null;
 }
@@ -3036,18 +3058,31 @@ var BACK_LAYERS=[
  {id:'err-overlay',isOpen:function(){return document.getElementById('err-overlay').style.display==='flex';},close:function(){closeErrDialog();},closeIf:function(){return !!window.closeErrDialog;},open:0},
  {id:'map-popup',isOpen:function(){return mapPopupOpen;},close:function(){try{map.closePopup();}catch(e){}},open:0}
 ];
-var hbDepth=0,hbInPop=false,mapPopupOpen=false;
-function backStackPush(){if(hbInPop)return;try{history.pushState({hb:++hbDepth},'','');}catch(e){}}
-function backStackTrim(n){hbDepth=Math.max(0,hbDepth-n);if(n>0){hbInPop=true;try{history.back();}catch(e){}setTimeout(function(){hbInPop=false;},350);}}
+var hbDepth=0,mapPopupOpen=false,popTrimTimer=null,trimPending=0;
+// popstate 구분 원리: 자체 trim(back())이 유발한 popstate는 되돌림 '에코'다.
+// backStackTrim이 trimPending을 먼저 올리고 back() → popstate 핸들러는 trimPending>0면 감소만 하고
+// UI를 건드리지 않는다(7차 검토 해법 — 동기 카운터, 타이머 없음). trimPending==0인 popstate만 물리키로
+// 판단해 closeTopLayer로 UI 1개를 닫는다. 구 잠금(350ms)·큐잉 구조는 삼킴/조기해제/연타먹통을
+// 낳아 제거했고, trim 에코가 부모 레이어를 연쇄 오닫기하던 문제도 이 카운터로 차단된다.
+function backStackPush(){try{history.pushState({hb:++hbDepth},'','');}catch(e){}}
+/* 계약: n은 반드시 1 — n>1 호출 시 trimPending 누적 버그(에이지 8차 I2) */
+function backStackTrim(n){var before=hbDepth;hbDepth=Math.max(0,hbDepth-n);var m=Math.min(n,before);if(m>0){trimPending+=m;try{history.back();}catch(e){trimPending=Math.max(0,trimPending-m);}}}
 function closeTopLayer(){
-  for(var i=0;i<BACK_LAYERS.length;i++){var L=BACK_LAYERS[i];
+  // 물리 Back키 전용: Android onBackPressed의 webView.goBack()이 히스토리 1단을 이미 소비했고
+  // 그 결과로 popstate→여기 도달. UI 레이어만 닫는다 — history.back() 추가 호출은 이중 감산(앱 종료 버그).
+  // (자체 trim의 에코는 popstate 핸들러에서 trimPending으로 걸러져 여기까지 안 온다.)
+  for(var i=BACK_LAYERS.length-1;i>=0;i--){var L=BACK_LAYERS[i];
     if(L.open&&(!L.closeIf||L.closeIf())){L.open=0;try{L.close();}catch(e){}
-      hbInPop=true;try{history.back();}catch(e){}setTimeout(function(){hbInPop=false;},350);return true;}}
+      if(L.id==='map-popup')mapPopupOpen=false;
+      hbDepth=Math.max(0,hbDepth-1);return true;}}
   return false;}
 function backStackInit(){
   window.addEventListener('popstate',function(ev){
-    if(hbInPop){hbInPop=false;return;}
-    if(closeTopLayer())return;
+    if(trimPending>0){trimPending--;return;} // 자체 trim(back())의 에코 — 히스토리는 이미 trim에서 감산됨, UI 불변
+    // 여기까지 온 popstate는 물리키(goBack)뿐: goBack이 히스토리 1단을 소비했으므로 UI도 정확히 1개만 닫는다.
+    // 닫을 레이어가 없어도 소비된 엔트리는 hbDepth에서 정산한다 — 안 정산하면 뒤따르는 trim이
+    // 빈 스택에 back()을 날려 에코가 안 돌아오고 trimPending이 영구 잔류한다(백키 사망).
+    if(!closeTopLayer())hbDepth=Math.max(0,hbDepth-1);
   });}
 applyLang();backStackInit();
 window.dispatchEvent(new Event('appReady'));
