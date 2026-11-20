@@ -290,6 +290,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public boolean updatePhotoDescription(String path, String description) {
+            try {
+                File mf = new File(path.replace(".jpg", ".json"));
+                JSONObject m = mf.exists() ? new JSONObject(readFileContent(mf)) : new JSONObject();
+                m.put("description", description);
+                writeFileContent(mf, m.toString());
+                return true;
+            } catch (Exception e) { uiToast("메모 저장 실패: " + e.getMessage()); return false; }
+        }
+
+        @JavascriptInterface
         public void deletePhoto(String path) {
             new File(path).delete();
             new File(path.replace(".jpg", ".json")).delete();

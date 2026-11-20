@@ -1284,14 +1284,60 @@ async function renderGallery(){
         <div class="pcoords">${p.lat?`${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`:tr('c.nocoord')}${p.alt?'\n'+tr('c.alt',{n:Math.round(p.alt)}):''}</div>
         <div class="ptime">${t}</div>
       </div>
-      <div class="pacts"><button class="ibtn del" onclick="doDelPhoto(this)">
+      <div class="pacts"><button class="ibtn edit" onclick="doEditMemo(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>
+        </svg></button><button class="ibtn del" onclick="doDelPhoto(this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
         </svg></button></div>`;
     div.querySelector('.thumb').onclick=()=>openLightbox(url,meta);
     div.querySelector('.ibtn.del').dataset.idx=allPhotos.indexOf(p);
+    div.querySelector('.ibtn.edit').dataset.idx=allPhotos.indexOf(p);
     list.appendChild(div);
   });
+}
+function savePhotoDesc(p,v){
+  try{
+    if(typeof AndroidBridge.updatePhotoDescription==='function')return AndroidBridge.updatePhotoDescription(p.path,v);
+    // 구버전 APK 호환: 기존 브릿지만으로 사진+메타 재저장
+    let m={};
+    try{m=JSON.parse(AndroidBridge.readText(p.path.replace(/\.jpg$/,'.json'))||'{}');}catch(e){}
+    m.description=v;
+    const b64=AndroidBridge.readFileAsBase64(p.path);
+    if(!b64)return false;
+    AndroidBridge.savePhoto('data:image/jpeg;base64,'+b64,p.project||p.projectName,p.filename,JSON.stringify(m));
+    return true;
+  }catch(e){return false;}
+}
+function doEditMemo(btn){
+  const idx=parseInt(btn.dataset.idx);
+  const p=allPhotos[idx];if(!p)return;
+  const item=btn.closest('.photo-item');
+  if(item.querySelector('.memo-edit'))return;
+  let box=item.querySelector('.pdesc');
+  if(!box){box=document.createElement('div');box.className='pdesc';item.querySelector('.pproj').after(box);}
+  const inp=document.createElement('input');
+  inp.type='text';inp.maxLength=60;inp.value=p.description||'';inp.className='memo-edit';
+  inp.placeholder='\u{1F4DD} 메모';
+  inp.style.cssText='width:100%;box-sizing:border-box;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--accent,#ff6b00);background:var(--surf2);color:var(--text)';
+  box.style.whiteSpace='normal';box.textContent='';box.appendChild(inp);
+  inp.focus();
+  let done=false;
+  const finish=async(save)=>{
+    if(done)return;done=true;
+    if(save){
+      const v=inp.value.trim();
+      if(v!==(p.description||'')){
+        if(IS_APK){if(!savePhotoDesc(p,v)){toast('저장 실패');renderGallery();return;}}
+        else await dbPut('photos',{...p,description:v});
+        toast('메모 저장됨');
+      }
+    }
+    renderGallery();
+  };
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}else if(e.key==='Escape'){finish(false);}};
+  inp.onblur=()=>finish(true);
 }
 async function doDelPhoto(btn){
   const idx=parseInt(btn.dataset.idx);
